@@ -2,8 +2,26 @@ import Cookies from 'js-cookie';
 import { DEFAULT_REDIRECT_URL } from 'dashboard/constants/globals';
 import { frontendURL } from 'dashboard/helper/URLHelper';
 
+// localStorage key for auth (works in iframes where cookies are blocked)
+const AUTH_STORAGE_KEY = 'cw_d_session_info_ls';
+
 export const hasAuthCookie = () => {
-  return !!Cookies.get('cw_d_session_info');
+  // Check cookie first, then localStorage (for iframe support)
+  if (Cookies.get('cw_d_session_info')) {
+    return true;
+  }
+  try {
+    const lsAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (lsAuth) {
+      const expiry = localStorage.getItem(AUTH_STORAGE_KEY + '_expiry');
+      if (expiry && new Date(expiry) > new Date()) {
+        return true;
+      }
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+  return false;
 };
 
 const getSSOAccountPath = ({ ssoAccountId, user }) => {

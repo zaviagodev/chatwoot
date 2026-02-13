@@ -13,7 +13,10 @@ import {
   CHATWOOT_SET_USER,
 } from '../../constants/appEvents';
 
-Cookies.defaults = { sameSite: 'Lax' };
+Cookies.defaults = { sameSite: 'None', secure: true };
+
+// localStorage key for auth (works in iframes where cookies are blocked)
+const AUTH_STORAGE_KEY = 'cw_d_session_info_ls';
 
 export const getLoadingStatus = state => state.fetchAPIloadingStatus;
 export const setLoadingStatus = (state, status) => {
@@ -30,9 +33,25 @@ export const getHeaderExpiry = response =>
 
 export const setAuthCredentials = response => {
   const expiryDate = getHeaderExpiry(response);
-  Cookies.set('cw_d_session_info', JSON.stringify(response.headers), {
+  const authData = JSON.stringify(response.headers);
+
+  // Store in both cookie (for same-origin) and localStorage (for iframe)
+  Cookies.set('cw_d_session_info', authData, {
     expires: differenceInDays(expiryDate, new Date()),
   });
+
+  // Also store in localStorage for iframe support
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, authData);
+    localStorage.setItem(
+      AUTH_STORAGE_KEY + '_expiry',
+      expiryDate.toISOString()
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('localStorage not available:', e);
+  }
+
   setUser(response.data.data, expiryDate);
 };
 
@@ -40,6 +59,14 @@ export const clearBrowserSessionCookies = () => {
   Cookies.remove('cw_d_session_info');
   Cookies.remove('auth_data');
   Cookies.remove('user');
+
+  // Also clear localStorage auth
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(AUTH_STORAGE_KEY + '_expiry');
+  } catch (e) {
+    // ignore
+  }
 };
 
 export const clearLocalStorageOnLogout = () => {

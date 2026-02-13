@@ -7,6 +7,9 @@ import {
   deleteIndexedDBOnLogout,
 } from '../store/utils/api';
 
+// localStorage key for auth (works in iframes where cookies are blocked)
+const AUTH_STORAGE_KEY = 'cw_d_session_info_ls';
+
 export default {
   validityCheck() {
     const urlData = endPoints('validityCheck');
@@ -29,13 +32,44 @@ export default {
     return fetchPromise;
   },
   hasAuthCookie() {
-    return !!Cookies.get('cw_d_session_info');
+    // Check cookie first, then localStorage (for iframe support)
+    if (Cookies.get('cw_d_session_info')) {
+      return true;
+    }
+    try {
+      const lsAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (lsAuth) {
+        // Check expiry
+        const expiry = localStorage.getItem(AUTH_STORAGE_KEY + '_expiry');
+        if (expiry && new Date(expiry) > new Date()) {
+          return true;
+        }
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+    return false;
   },
   getAuthData() {
-    if (this.hasAuthCookie()) {
-      const savedAuthInfo = Cookies.get('cw_d_session_info');
-      return JSON.parse(savedAuthInfo || '{}');
+    // Try cookie first
+    const cookieAuth = Cookies.get('cw_d_session_info');
+    if (cookieAuth) {
+      return JSON.parse(cookieAuth);
     }
+
+    // Fall back to localStorage (for iframe support)
+    try {
+      const lsAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (lsAuth) {
+        const expiry = localStorage.getItem(AUTH_STORAGE_KEY + '_expiry');
+        if (expiry && new Date(expiry) > new Date()) {
+          return JSON.parse(lsAuth);
+        }
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+
     return false;
   },
   profileUpdate({ displayName, avatar, ...profileAttributes }) {

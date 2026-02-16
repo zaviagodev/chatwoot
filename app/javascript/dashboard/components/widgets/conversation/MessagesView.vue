@@ -10,7 +10,6 @@ import ReplyBox from './ReplyBox.vue';
 import MessageList from 'next/message/MessageList.vue';
 import ConversationLabelSuggestion from './conversation/LabelSuggestion.vue';
 import Banner from 'dashboard/components/ui/Banner.vue';
-import CopilotDraftBanner from './CopilotDraftBanner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
 // stores and apis
@@ -42,7 +41,6 @@ export default {
     MessageList,
     ReplyBox,
     Banner,
-    CopilotDraftBanner,
     ConversationLabelSuggestion,
     Spinner,
   },
@@ -95,7 +93,6 @@ export default {
       currentUserId: 'getCurrentUserID',
       listLoadingStatus: 'getAllMessagesLoaded',
       currentAccountId: 'getCurrentAccountId',
-      copilotDraft: 'getCopilotDraft',
     }),
     isOpen() {
       return this.currentChat?.status === wootConstants.STATUS_TYPE.OPEN;
@@ -281,15 +278,6 @@ export default {
   },
 
   methods: {
-    handleCopilotDraftEdit(content) {
-      emitter.emit(BUS_EVENTS.SET_REPLY_EDITOR_CONTENT, content);
-      const draft = this.$store.getters.getCopilotDraft;
-      if (draft) {
-        const conversationId =
-          draft.conversation_display_id || draft.conversation_id;
-        this.$store.dispatch('rejectCopilotDraft', conversationId);
-      }
-    },
     async fetchSuggestions() {
       // start empty, this ensures that the label suggestions are not shown
       this.labelSuggestions = [];
@@ -469,7 +457,6 @@ export default {
       class="mx-2 mt-2 overflow-hidden rounded-lg"
       :banner-message="$t('CONVERSATION.OLD_INSTAGRAM_INBOX_REPLY_BANNER')"
     />
-    <CopilotDraftBanner v-if="copilotDraft" @edit="handleCopilotDraftEdit" />
     <MessageList
       ref="conversationPanelRef"
       class="conversation-panel flex-shrink flex-grow basis-px flex flex-col overflow-y-auto relative h-full m-0 pb-4"

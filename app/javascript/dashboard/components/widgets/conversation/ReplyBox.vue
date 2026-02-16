@@ -147,6 +147,7 @@ export default {
       globalConfig: 'globalConfig/get',
       accountId: 'getCurrentAccountId',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
+      copilotDraft: 'getCopilotDraft',
     }),
     currentContact() {
       const senderId = this.currentChat?.meta?.sender?.id;
@@ -425,6 +426,8 @@ export default {
         this.setCCAndToEmailsFromLastChat();
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
+        // Clear any stale copilot draft from previous conversation
+        this.$store.dispatch('clearCopilotDraft');
       }
 
       if (this.isOnPrivateNote) {
@@ -450,6 +453,11 @@ export default {
         this.setCCAndToEmailsFromLastChat();
       },
       deep: true,
+    },
+    copilotDraft(draft) {
+      if (draft?.content && !this.copilot.isActive.value) {
+        this.copilot.loadDraft(draft.content);
+      }
     },
     conversationIdByRoute(conversationId, oldConversationId) {
       if (conversationId !== oldConversationId) {
@@ -1124,8 +1132,24 @@ export default {
     togglePopout() {
       this.$emit('update:popOutReplyBox', !this.popOutReplyBox);
     },
-    onSubmitCopilotReply() {
+    async onSubmitCopilotReply() {
+      if (this.copilot.currentAction.value === 'copilot_draft') {
+        // Draft mode: approve via backend API (creates outgoing message)
+        await this.$store.dispatch('approveCopilotDraft', this.conversationId);
+        this.copilot.reset(false);
+        return;
+      }
+      // Normal copilot flow: insert generated content into editor
       this.message = this.copilot.accept();
+    },
+    async onCancelCopilotReply() {
+      if (this.copilot.currentAction.value === 'copilot_draft') {
+        // Draft mode: reject via backend API (clears Redis)
+        await this.$store.dispatch('rejectCopilotDraft', this.conversationId);
+        this.copilot.reset(false);
+        return;
+      }
+      this.copilot.reset();
     },
   },
 };
@@ -1277,7 +1301,7 @@ export default {
         key="copilot-bottom-panel"
         :is-generating-content="copilot.isButtonDisabled.value"
         @submit="onSubmitCopilotReply"
-        @cancel="copilot.reset"
+        @cancel="onCancelCopilotReply"
       />
       <ReplyBottomPanel
         v-else

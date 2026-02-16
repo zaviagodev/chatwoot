@@ -253,12 +253,28 @@ export function useCopilotReply() {
     return content;
   }
 
+  /**
+   * Loads an externally-provided draft (e.g. from a WebSocket copilot draft)
+   * into the editor without making an API call.
+   * @param {string} content - The draft content to display
+   */
+  function loadDraft(content) {
+    reset(false);
+    generatedContent.value = content;
+    showEditor.value = true;
+    isGenerating.value = false;
+    isContentReady.value = false; // set true by CopilotEditorSection @content-ready
+    currentAction.value = 'copilot_draft';
+    trackedConversationId.value = conversationId.value;
+  }
+
   return {
     showEditor,
     isGenerating,
     isContentReady,
     generatedContent,
     followUpContext,
+    currentAction,
 
     isActive,
     isButtonDisabled,
@@ -270,5 +286,6 @@ export function useCopilotReply() {
     execute,
     sendFollowUp,
     accept,
+    loadDraft,
   };
 }

@@ -7,6 +7,7 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     @conversation = conversation
     @inbox = conversation.inbox
     @assistant = assistant
+    @retrying = false
 
     Current.executed_by = @assistant
 
@@ -18,10 +19,18 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
       end
     end
   rescue StandardError => e
-    raise e if e.is_a?(ActiveStorage::FileNotFoundError) || e.is_a?(Faraday::BadRequestError)
+    if e.is_a?(ActiveStorage::FileNotFoundError) || e.is_a?(Faraday::BadRequestError)
+      @retrying = true
+      raise e
+    end
 
     handle_error(e)
   ensure
+    # Only clear debounce key when NOT retrying (retryable errors re-raise, job will run again)
+    # Skip cleanup entirely when debounce is disabled via feature flag
+    if Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_DEBOUNCE_ENABLED && !@retrying
+      Redis::Alfred.delete(format(Redis::Alfred::CAPTAIN_RESPONSE_KEY, conversation_id: conversation.id))
+    end
     Current.executed_by = nil
   end
 

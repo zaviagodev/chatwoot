@@ -1,5 +1,8 @@
 module Enterprise::MessageTemplates::HookExecutionService
   MAX_ATTACHMENT_WAIT_SECONDS = 4
+  CAPTAIN_DEBOUNCE_WINDOW = 5.seconds
+  CAPTAIN_DEBOUNCE_TTL = 120 # Safety net TTL; ensure block handles normal cleanup
+  CAPTAIN_DEBOUNCE_ENABLED = ActiveModel::Type::Boolean.new.cast(ENV.fetch('CAPTAIN_DEBOUNCE_ENABLED', 'true'))
 
   def trigger_templates
     super
@@ -32,12 +35,22 @@ module Enterprise::MessageTemplates::HookExecutionService
   def schedule_captain_response
     job_args = [conversation, conversation.inbox.captain_assistant]
 
-    if message.attachments.blank?
+    # Feature flag: set CAPTAIN_DEBOUNCE_ENABLED=false in .env to disable debounce and revert to immediate dispatch
+    unless CAPTAIN_DEBOUNCE_ENABLED
       Captain::Conversation::ResponseBuilderJob.perform_later(*job_args)
-    else
-      wait_time = calculate_attachment_wait_time
-      Captain::Conversation::ResponseBuilderJob.set(wait: wait_time).perform_later(*job_args)
+      return
     end
+
+    captain_key = format(Redis::Alfred::CAPTAIN_RESPONSE_KEY, conversation_id: conversation.id)
+
+    # Atomic lock: only the first message in a burst enqueues a job.
+    # Follows the same pattern as SendEmailNotificationService.
+    return unless Redis::Alfred.set(captain_key, message.id, nx: true, ex: CAPTAIN_DEBOUNCE_TTL)
+
+    wait_time = CAPTAIN_DEBOUNCE_WINDOW
+    wait_time += calculate_attachment_wait_time if message.attachments.present?
+
+    Captain::Conversation::ResponseBuilderJob.set(wait: wait_time).perform_later(*job_args)
   end
 
   def calculate_attachment_wait_time

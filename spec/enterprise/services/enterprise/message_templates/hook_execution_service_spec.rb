@@ -22,7 +22,9 @@ RSpec.describe MessageTemplates::HookExecutionService do
       end
 
       it 'schedules captain response job for incoming messages on pending conversations' do
-        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
 
         create(:message, conversation: conversation, message_type: :incoming)
       end
@@ -41,7 +43,9 @@ RSpec.describe MessageTemplates::HookExecutionService do
       end
 
       it 'schedules captain response job outside business hours (Captain always responds when configured)' do
-        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
 
         create(:message, conversation: conversation, message_type: :incoming)
       end
@@ -74,7 +78,9 @@ RSpec.describe MessageTemplates::HookExecutionService do
       end
 
       it 'schedules captain response job regardless of time' do
-        expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
 
         create(:message, conversation: conversation, message_type: :incoming)
       end
@@ -108,6 +114,7 @@ RSpec.describe MessageTemplates::HookExecutionService do
     end
 
     it 'does not schedule captain response job' do
+      expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:set)
       expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:perform_later)
 
       create(:message, conversation: conversation, message_type: :incoming)
@@ -120,6 +127,7 @@ RSpec.describe MessageTemplates::HookExecutionService do
     end
 
     it 'does not schedule captain response job' do
+      expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:set)
       expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:perform_later)
 
       create(:message, conversation: conversation, message_type: :incoming)
@@ -128,6 +136,7 @@ RSpec.describe MessageTemplates::HookExecutionService do
 
   context 'when message is outgoing' do
     it 'does not schedule captain response job' do
+      expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:set)
       expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:perform_later)
 
       create(:message, conversation: conversation, message_type: :outgoing)
@@ -290,6 +299,62 @@ RSpec.describe MessageTemplates::HookExecutionService do
 
         expect(conversation.reload.status).to eq('open')
       end
+    end
+  end
+
+  context 'when CAPTAIN_DEBOUNCE_ENABLED is false (feature flag off)' do
+    before do
+      stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_DEBOUNCE_ENABLED', false)
+    end
+
+    it 'dispatches job immediately without debounce' do
+      expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).with(conversation, assistant)
+
+      create(:message, conversation: conversation, message_type: :incoming)
+    end
+
+    it 'dispatches a job for every message (no dedup)' do
+      expect(Captain::Conversation::ResponseBuilderJob).to receive(:perform_later).exactly(3).times
+
+      create(:message, conversation: conversation, message_type: :incoming, content: 'hi')
+      create(:message, conversation: conversation, message_type: :incoming, content: 'interested')
+      create(:message, conversation: conversation, message_type: :incoming, content: 'price?')
+    end
+  end
+
+  context 'when multiple messages arrive rapidly (debounce)' do
+    it 'only enqueues one job for rapid messages to the same conversation' do
+      job_double = double
+      expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).once.and_return(job_double)
+      expect(job_double).to receive(:perform_later).once
+
+      create(:message, conversation: conversation, message_type: :incoming, content: 'hi')
+      create(:message, conversation: conversation, message_type: :incoming, content: 'interested')
+      create(:message, conversation: conversation, message_type: :incoming, content: 'what is the price?')
+    end
+
+    it 'allows a new job after the debounce key is cleared' do
+      job_double = double
+      expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).twice.and_return(job_double)
+      expect(job_double).to receive(:perform_later).twice
+
+      create(:message, conversation: conversation, message_type: :incoming, content: 'hi')
+
+      # Simulate key expiry (clear the Redis key as the job would)
+      captain_key = format(Redis::Alfred::CAPTAIN_RESPONSE_KEY, conversation_id: conversation.id)
+      Redis::Alfred.delete(captain_key)
+
+      create(:message, conversation: conversation, message_type: :incoming, content: 'another question')
+    end
+
+    it 'does not affect different conversations' do
+      conversation2 = create(:conversation, inbox: inbox, account: account, contact: contact, status: :pending)
+      job_double = double
+      expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).twice.and_return(job_double)
+      expect(job_double).to receive(:perform_later).twice
+
+      create(:message, conversation: conversation, message_type: :incoming, content: 'hi')
+      create(:message, conversation: conversation2, message_type: :incoming, content: 'hello')
     end
   end
 end

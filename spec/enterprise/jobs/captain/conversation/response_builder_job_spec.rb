@@ -220,6 +220,35 @@ RSpec.describe Captain::Conversation::ResponseBuilderJob, type: :job do
     end
   end
 
+  describe 'debounce key cleanup' do
+    let(:conversation) { create(:conversation, inbox: inbox, account: account) }
+    let(:mock_llm_chat_service) { instance_double(Captain::Llm::AssistantChatService) }
+    let(:captain_key) { format(Redis::Alfred::CAPTAIN_RESPONSE_KEY, conversation_id: conversation.id) }
+
+    before do
+      create(:message, conversation: conversation, content: 'Hello', message_type: :incoming)
+      allow(Captain::Llm::AssistantChatService).to receive(:new).and_return(mock_llm_chat_service)
+      allow(mock_llm_chat_service).to receive(:generate_response).and_return({ 'response' => 'Hey, welcome to Captain Specs' })
+      allow(account).to receive(:feature_enabled?).and_return(false)
+      allow(account).to receive(:feature_enabled?).with('captain_integration_v2').and_return(false)
+      Redis::Alfred.set(captain_key, '123', nx: true, ex: 120)
+    end
+
+    it 'cleans up Redis debounce key after successful execution' do
+      described_class.perform_now(conversation, assistant)
+
+      expect(Redis::Alfred.exists?(captain_key)).to be false
+    end
+
+    it 'cleans up Redis debounce key after non-retryable error' do
+      allow(mock_llm_chat_service).to receive(:generate_response).and_raise(StandardError, 'Generic error')
+
+      described_class.perform_now(conversation, assistant)
+
+      expect(Redis::Alfred.exists?(captain_key)).to be false
+    end
+  end
+
   describe 'job configuration' do
     it 'has retry_on configuration for retryable errors' do
       expect(described_class).to respond_to(:retry_on)

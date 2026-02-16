@@ -256,6 +256,8 @@ export function useCopilotReply() {
   /**
    * Loads an externally-provided draft (e.g. from a WebSocket copilot draft)
    * into the editor without making an API call.
+   * Constructs a synthetic followUpContext so agents can refine the draft
+   * using the follow-up input.
    * @param {string} content - The draft content to display
    */
   function loadDraft(content) {
@@ -269,6 +271,21 @@ export function useCopilotReply() {
     isContentReady.value = true;
     currentAction.value = 'copilot_draft';
     trackedConversationId.value = conversationId.value;
+
+    // Build a synthetic followUpContext so the FollowUpService can refine
+    // the draft. Extract the last incoming (customer) message as context.
+    const messages = currentChat.value?.messages || [];
+    const lastIncoming = [...messages]
+      .reverse()
+      .find(m => m.message_type === 0 && !m.private);
+    const originalContext = lastIncoming?.content || '';
+
+    followUpContext.value = {
+      event_name: 'reply_suggestion',
+      original_context: originalContext,
+      last_response: content,
+      conversation_history: [],
+    };
   }
 
   return {

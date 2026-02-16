@@ -263,7 +263,10 @@ export function useCopilotReply() {
     generatedContent.value = content;
     showEditor.value = true;
     isGenerating.value = false;
-    isContentReady.value = false; // set true by CopilotEditorSection @content-ready
+    // Mark content ready immediately — draft content is already available,
+    // and relying on the Transition @after-enter event is unreliable when
+    // the component mounts for the first time.
+    isContentReady.value = true;
     currentAction.value = 'copilot_draft';
     trackedConversationId.value = conversationId.value;
   }

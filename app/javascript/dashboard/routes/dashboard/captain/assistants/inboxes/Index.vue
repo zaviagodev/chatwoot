@@ -83,6 +83,7 @@ watch(
           :id="captainInbox.id"
           :key="captainInbox.id"
           :inbox="captainInbox"
+          :assistant-id="assistantId"
           @action="handleAction"
         />
       </div>

@@ -8,6 +8,8 @@ module Redis::RedisKeys
   CONVERSATION_MAILER_KEY = 'CONVERSATION::%<conversation_id>d'.freeze
   # Debounce Captain AI responses — only one job per conversation burst
   CAPTAIN_RESPONSE_KEY = 'CAPTAIN_RESPONSE::%<conversation_id>d'.freeze
+  # Copilot draft waiting for agent approval
+  COPILOT_DRAFT_KEY = 'COPILOT_DRAFT::%<conversation_id>d'.freeze
   # Whether a conversation is muted ?
   CONVERSATION_MUTE_KEY = 'CONVERSATION::%<id>d::MUTED'.freeze
   CONVERSATION_DRAFT_MESSAGE = 'CONVERSATION::%<id>d::DRAFT_MESSAGE'.freeze

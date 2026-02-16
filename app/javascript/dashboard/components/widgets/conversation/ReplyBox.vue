@@ -494,6 +494,7 @@ export default {
       this.onNewConversationModalActive
     );
     emitter.on(BUS_EVENTS.INSERT_INTO_NORMAL_EDITOR, this.addIntoEditor);
+    emitter.on(BUS_EVENTS.SET_REPLY_EDITOR_CONTENT, this.setEditorContent);
     emitter.on(CMD_AI_ASSIST, this.executeCopilotAction);
   },
   unmounted() {
@@ -501,6 +502,7 @@ export default {
     document.removeEventListener('keydown', this.handleKeyEvents);
     emitter.off(BUS_EVENTS.TOGGLE_REPLY_TO_MESSAGE, this.fetchAndSetReplyTo);
     emitter.off(BUS_EVENTS.INSERT_INTO_NORMAL_EDITOR, this.addIntoEditor);
+    emitter.off(BUS_EVENTS.SET_REPLY_EDITOR_CONTENT, this.setEditorContent);
     emitter.off(
       BUS_EVENTS.NEW_CONVERSATION_MODAL,
       this.onNewConversationModalActive
@@ -848,6 +850,10 @@ export default {
     },
     addIntoEditor(content) {
       this.updateEditorSelectionWith = content;
+      this.onFocus();
+    },
+    setEditorContent(content) {
+      this.message = content;
       this.onFocus();
     },
     executeCopilotAction(action, data) {

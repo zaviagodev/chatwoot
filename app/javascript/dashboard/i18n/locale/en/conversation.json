@@ -290,6 +290,16 @@
       "REJECT_CALL": "Reject",
       "JOIN_CALL": "Join call",
       "END_CALL": "End call"
+    },
+    "COPILOT_DRAFT": {
+      "BANNER_MESSAGE": "Captain AI suggests a reply for this conversation",
+      "APPROVE": "Send as Reply",
+      "REJECT": "Discard",
+      "EDIT": "Edit Draft",
+      "APPROVED": "Draft sent as reply",
+      "REJECTED": "Draft discarded",
+      "ERROR": "Failed to process draft",
+      "AI_ERROR": "AI could not generate a reply. Please respond manually."
     }
   },
   "EMAIL_TRANSCRIPT": {

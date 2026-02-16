@@ -132,6 +132,40 @@ class Conversation < ApplicationRecord
     additional_attributes&.dig('conversation_language')
   end
 
+  # Copilot mode: 'draft' (default), 'auto_send', 'off'
+  COPILOT_MODES = %w[draft auto_send off].freeze
+
+  def copilot_mode
+    mode = additional_attributes&.dig('copilot_mode')
+    COPILOT_MODES.include?(mode) ? mode : 'draft'
+  end
+
+  def copilot_draft?
+    copilot_mode == 'draft'
+  end
+
+  def copilot_auto_send?
+    copilot_mode == 'auto_send'
+  end
+
+  def copilot_off?
+    copilot_mode == 'off'
+  end
+
+  def update_copilot_mode!(mode)
+    return unless COPILOT_MODES.include?(mode)
+
+    update!(additional_attributes: (additional_attributes || {}).merge('copilot_mode' => mode))
+  end
+
+  def clear_copilot_draft!
+    draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: id)
+    Redis::Alfred.delete(draft_key)
+    # rubocop:disable Rails/SkipsModelValidations
+    update_columns(additional_attributes: (additional_attributes || {}).merge('copilot_draft_pending' => false))
+    # rubocop:enable Rails/SkipsModelValidations
+  end
+
   # Be aware: The precision of created_at and last_activity_at may differ from Ruby's Time precision.
   # Our DB column (see schema) stores timestamps with second-level precision (no microseconds), so
   # if you assign a Ruby Time with microseconds, the DB will truncate it. This may cause subtle differences

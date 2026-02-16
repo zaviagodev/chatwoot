@@ -80,6 +80,7 @@ const actions = {
 
   clearSelectedState({ commit }) {
     commit(types.CLEAR_CURRENT_CHAT_WINDOW);
+    commit(types.CLEAR_COPILOT_DRAFT);
   },
 
   fetchPreviousMessages: async ({ commit }, data) => {
@@ -192,6 +193,7 @@ const actions = {
   async setActiveChat({ commit, dispatch }, { data, after }) {
     commit(types.SET_CURRENT_CHAT_WINDOW, data);
     commit(types.CLEAR_ALL_MESSAGES_LOADED);
+    commit(types.CLEAR_COPILOT_DRAFT);
     if (data.dataFetched === undefined) {
       try {
         await dispatch('fetchPreviousMessages', {
@@ -204,6 +206,8 @@ const actions = {
         // Ignore error
       }
     }
+    // Fetch copilot draft for this conversation (non-blocking)
+    dispatch('fetchCopilotDraft', data.id);
   },
 
   assignAgent: async ({ dispatch }, { conversationId, agentId }) => {
@@ -524,6 +528,74 @@ const actions = {
     try {
       const response = await ConversationApi.getInboxAssistant(conversationId);
       commit(types.SET_INBOX_CAPTAIN_ASSISTANT, response.data);
+    } catch (error) {
+      // Handle error
+    }
+  },
+
+  setCopilotDraft({ commit, state }, data) {
+    const currentChatId = state.selectedChatId;
+    if (currentChatId && data.conversation_id !== currentChatId) return;
+    commit(types.SET_COPILOT_DRAFT, data);
+  },
+
+  clearCopilotDraft({ commit }) {
+    commit(types.CLEAR_COPILOT_DRAFT);
+  },
+
+  setCopilotDraftError({ commit }) {
+    commit(types.CLEAR_COPILOT_DRAFT);
+  },
+
+  fetchCopilotDraft: async ({ commit }, conversationId) => {
+    try {
+      const response = await ConversationApi.getCopilotDraft(conversationId);
+      if (response.data.has_draft) {
+        commit(types.SET_COPILOT_DRAFT, response.data.draft);
+      }
+    } catch (error) {
+      // 404 = no draft, expected — silence it (G5)
+      if (error?.response?.status !== 404) {
+        // Log non-404 errors only
+      }
+    }
+  },
+
+  approveCopilotDraft: async ({ commit }, conversationId) => {
+    try {
+      commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isApproving: true });
+      await ConversationApi.approveCopilotDraft(conversationId);
+      commit(types.CLEAR_COPILOT_DRAFT);
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        commit(types.CLEAR_COPILOT_DRAFT);
+      } else {
+        commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isApproving: false });
+      }
+    }
+  },
+
+  rejectCopilotDraft: async ({ commit }, conversationId) => {
+    try {
+      commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isRejecting: true });
+      await ConversationApi.rejectCopilotDraft(conversationId);
+      commit(types.CLEAR_COPILOT_DRAFT);
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        commit(types.CLEAR_COPILOT_DRAFT);
+      } else {
+        commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isRejecting: false });
+      }
+    }
+  },
+
+  editCopilotDraft: async ({ commit }, { conversationId, content }) => {
+    try {
+      const response = await ConversationApi.updateCopilotDraft(
+        conversationId,
+        content
+      );
+      commit(types.SET_COPILOT_DRAFT, response.data.draft);
     } catch (error) {
       // Handle error
     }

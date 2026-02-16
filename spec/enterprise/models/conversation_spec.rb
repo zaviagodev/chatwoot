@@ -75,6 +75,66 @@ RSpec.describe Conversation, type: :model do
     end
   end
 
+  describe '#set_initial_copilot_mode' do
+    context 'when CAPTAIN_COPILOT_MODE_ENABLED is true' do
+      before do
+        stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', true)
+      end
+
+      it 'stamps conversation with inbox default copilot mode' do
+        account = create(:account)
+        inbox = create(:inbox, account: account)
+        assistant = create(:captain_assistant, account: account)
+        CaptainInbox.create!(inbox: inbox, captain_assistant: assistant, copilot_default_mode: 'auto_send')
+
+        conversation = create(:conversation, account: account, inbox: inbox)
+        conversation.reload
+
+        expect(conversation.copilot_mode).to eq('auto_send')
+      end
+
+      it 'defaults to draft when inbox has captain but no custom mode' do
+        account = create(:account)
+        inbox = create(:inbox, account: account)
+        assistant = create(:captain_assistant, account: account)
+        CaptainInbox.create!(inbox: inbox, captain_assistant: assistant)
+
+        conversation = create(:conversation, account: account, inbox: inbox)
+        conversation.reload
+
+        expect(conversation.copilot_mode).to eq('draft')
+      end
+
+      it 'does not stamp conversation when inbox has no captain' do
+        account = create(:account)
+        inbox = create(:inbox, account: account)
+
+        conversation = create(:conversation, account: account, inbox: inbox)
+        conversation.reload
+
+        expect(conversation.additional_attributes).not_to have_key('copilot_mode')
+      end
+    end
+
+    context 'when CAPTAIN_COPILOT_MODE_ENABLED is false' do
+      before do
+        stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', false)
+      end
+
+      it 'does not stamp conversation even with captain configured' do
+        account = create(:account)
+        inbox = create(:inbox, account: account)
+        assistant = create(:captain_assistant, account: account)
+        CaptainInbox.create!(inbox: inbox, captain_assistant: assistant, copilot_default_mode: 'auto_send')
+
+        conversation = create(:conversation, account: account, inbox: inbox)
+        conversation.reload
+
+        expect(conversation.additional_attributes).not_to have_key('copilot_mode')
+      end
+    end
+  end
+
   describe 'assignment capacity limits' do
     describe 'team assignment with inbox auto-assignment disabled' do
       let(:account) { create(:account) }

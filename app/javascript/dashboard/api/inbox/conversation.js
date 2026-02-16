@@ -137,6 +137,24 @@ class ConversationApi extends ApiClient {
     return axios.get(`${this.url}/${conversationId}/inbox_assistant`);
   }
 
+  getCopilotDraft(conversationId) {
+    return axios.get(`${this.url}/${conversationId}/copilot_draft`);
+  }
+
+  approveCopilotDraft(conversationId) {
+    return axios.post(`${this.url}/${conversationId}/copilot_draft/approve`);
+  }
+
+  rejectCopilotDraft(conversationId) {
+    return axios.post(`${this.url}/${conversationId}/copilot_draft/reject`);
+  }
+
+  updateCopilotDraft(conversationId, content) {
+    return axios.patch(`${this.url}/${conversationId}/copilot_draft`, {
+      content,
+    });
+  }
+
   delete(conversationId) {
     return axios.delete(`${this.url}/${conversationId}`);
   }

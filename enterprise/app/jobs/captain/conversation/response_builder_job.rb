@@ -55,7 +55,12 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   def process_response
     return process_action('handoff') if handoff_requested?
 
-    create_messages
+    if copilot_mode_enabled? && @conversation.copilot_draft?
+      store_and_broadcast_draft
+    else
+      create_messages
+    end
+
     Rails.logger.info("[CAPTAIN][ResponseBuilderJob] Incrementing response usage for #{account.id}")
     account.increment_response_usage
   end
@@ -134,10 +139,76 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     )
   end
 
+  def store_and_broadcast_draft
+    validate_message_content!(@response['response'])
+
+    draft_payload = {
+      content: @response['response'],
+      agent_name: @response['agent_name'],
+      generated_at: Time.current.iso8601,
+      conversation_id: @conversation.id,
+      conversation_display_id: @conversation.display_id
+    }
+
+    # Store in Redis (1 hour TTL)
+    draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: @conversation.id)
+    Redis::Alfred.set(draft_key, draft_payload.to_json, ex: 3600)
+
+    # Mark conversation as having a pending draft
+    merged = (@conversation.additional_attributes || {}).merge('copilot_draft_pending' => true)
+    @conversation.additional_attributes = merged
+    # rubocop:disable Rails/SkipsModelValidations
+    @conversation.update_columns(additional_attributes: merged)
+    # rubocop:enable Rails/SkipsModelValidations
+
+    # Broadcast to frontend via Chatwoot's standard broadcast pattern
+    Rails.logger.info("[CAPTAIN][ResponseBuilderJob] Broadcasting copilot draft for conversation: #{@conversation.id}")
+    tokens = collect_broadcast_tokens
+    if tokens.blank?
+      Rails.logger.warn("[CAPTAIN][ResponseBuilderJob] No broadcast tokens for conversation: #{@conversation.id} — draft stored but no agents notified")
+      return
+    end
+
+    ::ActionCableBroadcastJob.perform_later(
+      tokens,
+      'copilot.draft.created',
+      draft_payload.merge(account_id: account.id)
+    )
+  end
+
+  def collect_broadcast_tokens
+    agent_tokens = @conversation.inbox.members.pluck(:pubsub_token)
+    admin_tokens = account.administrators.pluck(:pubsub_token)
+    (agent_tokens + admin_tokens).uniq
+  end
+
+  def copilot_mode_enabled?
+    Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED
+  end
+
   def handle_error(error)
     log_error(error)
-    process_action('handoff')
+    if copilot_mode_enabled? && @conversation.copilot_draft?
+      broadcast_copilot_error
+    else
+      process_action('handoff')
+    end
     true
+  end
+
+  def broadcast_copilot_error
+    tokens = collect_broadcast_tokens
+    return if tokens.blank?
+
+    ::ActionCableBroadcastJob.perform_later(
+      tokens,
+      'copilot.draft.error',
+      {
+        message: 'AI could not generate a reply. Please respond manually.',
+        conversation_id: @conversation.id,
+        account_id: account.id
+      }
+    )
   end
 
   def log_error(error)

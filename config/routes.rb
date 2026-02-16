@@ -64,7 +64,7 @@ Rails.application.routes.draw do
               collection do
                 get :tools
               end
-              resources :inboxes, only: [:index, :create, :destroy], param: :inbox_id
+              resources :inboxes, only: [:index, :create, :update, :destroy], param: :inbox_id
               resources :scenarios
             end
             resources :assistant_responses
@@ -140,6 +140,10 @@ Rails.application.routes.draw do
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
+              resource :copilot_draft, only: [:show, :update], controller: 'copilot_drafts' do
+                post :approve
+                post :reject
+              end
             end
             member do
               post :mute

@@ -969,6 +969,14 @@
       "OPTIONS": {
         "DISCONNECT": "Disconnect"
       },
+      "COPILOT_MODE": {
+        "LABEL": "Copilot Mode",
+        "DRAFT": "Draft",
+        "AUTO_SEND": "Auto Send",
+        "OFF": "Off",
+        "SUCCESS_MESSAGE": "Copilot mode updated successfully.",
+        "ERROR_MESSAGE": "Failed to update copilot mode. Please try again."
+      },
       "DELETE": {
         "TITLE": "Are you sure to disconnect the inbox?",
         "DESCRIPTION": "",

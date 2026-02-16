@@ -18,5 +18,24 @@ export default createStore({
         return throwErrorMessage(error);
       }
     },
+    updateCopilotMode: async function updateCopilotMode(
+      { commit },
+      { assistantId, inboxId, copilotDefaultMode }
+    ) {
+      commit(mutations.SET_UI_FLAG, { updatingItem: true });
+      try {
+        const response = await CaptainInboxes.update({
+          assistantId,
+          inboxId,
+          copilotDefaultMode,
+        });
+        commit(mutations.EDIT, response.data);
+        commit(mutations.SET_UI_FLAG, { updatingItem: false });
+        return response.data;
+      } catch (error) {
+        commit(mutations.SET_UI_FLAG, { updatingItem: false });
+        return throwErrorMessage(error);
+      }
+    },
   }),
 });

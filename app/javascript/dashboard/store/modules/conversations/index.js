@@ -23,6 +23,8 @@ const state = {
   syncConversationsMessages: {},
   conversationFilters: {},
   copilotAssistant: {},
+  copilotDraft: null,
+  copilotDraftUIFlags: {},
 };
 
 const getConversationById = _state => conversationId => {
@@ -360,6 +362,16 @@ export const mutations = {
   },
   [types.SET_INBOX_CAPTAIN_ASSISTANT](_state, data) {
     _state.copilotAssistant = data.assistant;
+  },
+  [types.SET_COPILOT_DRAFT](_state, draft) {
+    _state.copilotDraft = draft;
+  },
+  [types.CLEAR_COPILOT_DRAFT](_state) {
+    _state.copilotDraft = null;
+    _state.copilotDraftUIFlags = {};
+  },
+  [types.SET_COPILOT_DRAFT_UI_FLAG](_state, flags) {
+    _state.copilotDraftUIFlags = { ..._state.copilotDraftUIFlags, ...flags };
   },
 };
 

@@ -17,6 +17,13 @@ class CaptainInboxes extends ApiClient {
     });
   }
 
+  update(params = {}) {
+    const { assistantId, inboxId, copilotDefaultMode } = params;
+    return axios.patch(`${this.url}/${assistantId}/inboxes/${inboxId}`, {
+      inbox: { copilot_default_mode: copilotDefaultMode },
+    });
+  }
+
   delete(params = {}) {
     const { assistantId, inboxId } = params;
     return axios.delete(`${this.url}/${assistantId}/inboxes/${inboxId}`);

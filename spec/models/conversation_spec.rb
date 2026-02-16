@@ -1084,4 +1084,128 @@ RSpec.describe Conversation do
       end
     end
   end
+
+  describe 'copilot mode helpers' do
+    let(:account) { create(:account) }
+    let(:conversation) { create(:conversation, account: account) }
+
+    describe '#copilot_mode' do
+      it 'defaults to draft mode when not set' do
+        expect(conversation.copilot_mode).to eq('draft')
+      end
+
+      it 'returns the stored copilot mode' do
+        conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+        expect(conversation.copilot_mode).to eq('auto_send')
+      end
+
+      it 'falls back to draft for invalid values' do
+        conversation.update!(additional_attributes: { 'copilot_mode' => 'invalid_mode' })
+        expect(conversation.copilot_mode).to eq('draft')
+      end
+
+      it 'falls back to draft when additional_attributes is empty' do
+        conversation.update!(additional_attributes: {})
+        expect(conversation.copilot_mode).to eq('draft')
+      end
+    end
+
+    describe '#copilot_draft?' do
+      it 'returns true when mode is draft' do
+        expect(conversation.copilot_draft?).to be(true)
+      end
+
+      it 'returns true when mode is not set (default)' do
+        expect(conversation.copilot_draft?).to be(true)
+      end
+
+      it 'returns false when mode is auto_send' do
+        conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+        expect(conversation.copilot_draft?).to be(false)
+      end
+    end
+
+    describe '#copilot_auto_send?' do
+      it 'returns true when mode is auto_send' do
+        conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+        expect(conversation.copilot_auto_send?).to be(true)
+      end
+
+      it 'returns false when mode is draft' do
+        expect(conversation.copilot_auto_send?).to be(false)
+      end
+    end
+
+    describe '#copilot_off?' do
+      it 'returns true when mode is off' do
+        conversation.update!(additional_attributes: { 'copilot_mode' => 'off' })
+        expect(conversation.copilot_off?).to be(true)
+      end
+
+      it 'returns false when mode is draft' do
+        expect(conversation.copilot_off?).to be(false)
+      end
+    end
+
+    describe '#update_copilot_mode!' do
+      it 'updates copilot mode to auto_send' do
+        conversation.update_copilot_mode!('auto_send')
+        expect(conversation.reload.copilot_mode).to eq('auto_send')
+      end
+
+      it 'updates copilot mode to off' do
+        conversation.update_copilot_mode!('off')
+        expect(conversation.reload.copilot_mode).to eq('off')
+      end
+
+      it 'updates copilot mode to draft' do
+        conversation.update_copilot_mode!('off')
+        conversation.update_copilot_mode!('draft')
+        expect(conversation.reload.copilot_mode).to eq('draft')
+      end
+
+      it 'rejects invalid mode values' do
+        conversation.update_copilot_mode!('invalid')
+        expect(conversation.reload.copilot_mode).to eq('draft')
+      end
+
+      it 'preserves other additional_attributes' do
+        conversation.update!(additional_attributes: { 'conversation_language' => 'en' })
+        conversation.update_copilot_mode!('auto_send')
+        conversation.reload
+        expect(conversation.additional_attributes['conversation_language']).to eq('en')
+        expect(conversation.copilot_mode).to eq('auto_send')
+      end
+    end
+
+    describe '#clear_copilot_draft!' do
+      it 'deletes the Redis draft key' do
+        draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: conversation.id)
+        Redis::Alfred.set(draft_key, 'test_draft', ex: 3600)
+
+        conversation.clear_copilot_draft!
+
+        expect(Redis::Alfred.get(draft_key)).to be_nil
+      end
+
+      it 'sets copilot_draft_pending to false' do
+        conversation.update!(additional_attributes: { 'copilot_draft_pending' => true, 'copilot_mode' => 'draft' })
+
+        conversation.clear_copilot_draft!
+        conversation.reload
+
+        expect(conversation.additional_attributes['copilot_draft_pending']).to be(false)
+      end
+
+      it 'preserves other additional_attributes when clearing draft' do
+        conversation.update!(additional_attributes: { 'copilot_draft_pending' => true, 'conversation_language' => 'th' })
+
+        conversation.clear_copilot_draft!
+        conversation.reload
+
+        expect(conversation.additional_attributes['copilot_draft_pending']).to be(false)
+        expect(conversation.additional_attributes['conversation_language']).to eq('th')
+      end
+    end
+  end
 end

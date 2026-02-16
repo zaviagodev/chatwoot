@@ -34,6 +34,11 @@ class ActionCableConnector extends BaseActionCableConnector {
       'conversation.updated': this.onConversationUpdated,
       'account.cache_invalidated': this.onCacheInvalidate,
       'copilot.message.created': this.onCopilotMessageCreated,
+      'copilot.draft.created': this.onCopilotDraftCreated,
+      'copilot.draft.approved': this.onCopilotDraftApproved,
+      'copilot.draft.rejected': this.onCopilotDraftRejected,
+      'copilot.draft.edited': this.onCopilotDraftEdited,
+      'copilot.draft.error': this.onCopilotDraftError,
     };
   }
 
@@ -192,6 +197,34 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onCopilotMessageCreated = data => {
     this.app.$store.dispatch('copilotMessages/upsert', data);
+  };
+
+  onCopilotDraftCreated = data => {
+    if (!this.isAValidEvent(data)) return;
+    this.app.$store.dispatch('setCopilotDraft', data);
+  };
+
+  onCopilotDraftApproved = data => {
+    if (!this.isAValidEvent(data)) return;
+    this.app.$store.dispatch('clearCopilotDraft', data);
+  };
+
+  onCopilotDraftRejected = data => {
+    if (!this.isAValidEvent(data)) return;
+    this.app.$store.dispatch('clearCopilotDraft', data);
+  };
+
+  onCopilotDraftEdited = data => {
+    if (!this.isAValidEvent(data)) return;
+    this.app.$store.dispatch('setCopilotDraft', data);
+  };
+
+  onCopilotDraftError = data => {
+    if (!this.isAValidEvent(data)) return;
+    this.app.$store.dispatch('setCopilotDraftError', data);
+    emitter.emit(BUS_EVENTS.SHOW_TOAST, {
+      message: data.message || 'AI could not generate a reply',
+    });
   };
 
   onCacheInvalidate = data => {

@@ -161,6 +161,12 @@ const getters = {
   getCopilotAssistant: _state => {
     return _state.copilotAssistant;
   },
+  getCopilotDraft: _state => {
+    return _state.copilotDraft;
+  },
+  getCopilotDraftUIFlags: _state => {
+    return _state.copilotDraftUIFlags;
+  },
 };
 
 export default getters;

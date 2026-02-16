@@ -249,6 +249,98 @@ RSpec.describe Captain::Conversation::ResponseBuilderJob, type: :job do
     end
   end
 
+  describe 'copilot draft mode' do
+    let(:conversation) { create(:conversation, inbox: inbox, account: account, status: :open) }
+    let(:mock_llm_chat_service) { instance_double(Captain::Llm::AssistantChatService) }
+    let(:agent) { create(:user, account: account, role: :agent) }
+
+    before do
+      stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', true)
+      create(:inbox_member, inbox: inbox, user: agent)
+      conversation.update!(additional_attributes: { 'copilot_mode' => 'draft' })
+      create(:message, conversation: conversation, content: 'Hello', message_type: :incoming)
+      allow(Captain::Llm::AssistantChatService).to receive(:new).and_return(mock_llm_chat_service)
+      allow(mock_llm_chat_service).to receive(:generate_response).and_return({
+        'response' => 'Here is my AI draft reply',
+        'agent_name' => 'Captain'
+      })
+      allow(account).to receive(:feature_enabled?).and_return(false)
+      allow(account).to receive(:feature_enabled?).with('captain_integration_v2').and_return(false)
+    end
+
+    it 'stores draft in Redis instead of creating outgoing message' do
+      expect do
+        described_class.perform_now(conversation, assistant)
+      end.not_to(change { conversation.messages.outgoing.count })
+
+      draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: conversation.id)
+      draft_data = JSON.parse(Redis::Alfred.get(draft_key))
+      expect(draft_data['content']).to eq('Here is my AI draft reply')
+      expect(draft_data['agent_name']).to eq('Captain')
+      expect(draft_data['conversation_id']).to eq(conversation.id)
+    end
+
+    it 'broadcasts copilot.draft.created via ActionCable' do
+      expect(ActionCableBroadcastJob).to receive(:perform_later).with(
+        anything,
+        'copilot.draft.created',
+        hash_including(content: 'Here is my AI draft reply', account_id: account.id)
+      )
+
+      described_class.perform_now(conversation, assistant)
+    end
+
+    it 'sets copilot_draft_pending on conversation' do
+      described_class.perform_now(conversation, assistant)
+      conversation.reload
+      expect(conversation.additional_attributes['copilot_draft_pending']).to be(true)
+    end
+
+    it 'still increments response usage for draft mode' do
+      described_class.perform_now(conversation, assistant)
+      account.reload
+      expect(account.usage_limits[:captain][:responses][:consumed]).to eq(1)
+    end
+
+    it 'broadcasts error instead of handoff in draft mode' do
+      allow(mock_llm_chat_service).to receive(:generate_response).and_raise(StandardError, 'API error')
+
+      expect(ActionCableBroadcastJob).to receive(:perform_later).with(
+        anything,
+        'copilot.draft.error',
+        hash_including(message: 'AI could not generate a reply. Please respond manually.')
+      )
+
+      # Should NOT create a handoff message
+      expect do
+        described_class.perform_now(conversation, assistant)
+      end.not_to(change { conversation.messages.where(message_type: :outgoing).count })
+    end
+
+    context 'when copilot mode is auto_send' do
+      before do
+        conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+      end
+
+      it 'creates outgoing message normally (not a draft)' do
+        described_class.perform_now(conversation, assistant)
+        expect(conversation.messages.outgoing.count).to eq(1)
+        expect(conversation.messages.outgoing.last.content).to eq('Here is my AI draft reply')
+      end
+    end
+
+    context 'when CAPTAIN_COPILOT_MODE_ENABLED is false' do
+      before do
+        stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', false)
+      end
+
+      it 'creates outgoing message normally even if copilot_mode is draft' do
+        described_class.perform_now(conversation, assistant)
+        expect(conversation.messages.outgoing.count).to eq(1)
+      end
+    end
+  end
+
   describe 'job configuration' do
     it 'has retry_on configuration for retryable errors' do
       expect(described_class).to respond_to(:retry_on)

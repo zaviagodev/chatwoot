@@ -8,9 +8,23 @@ module Enterprise::Concerns::Conversation
     has_many :captain_responses, class_name: 'Captain::AssistantResponse', dependent: :nullify, as: :documentable
     before_validation :validate_sla_policy, if: -> { sla_policy_id_changed? }
     around_save :ensure_applied_sla_is_created, if: -> { sla_policy_id_changed? }
+    after_create_commit :set_initial_copilot_mode
   end
 
   private
+
+  def set_initial_copilot_mode
+    return unless Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED
+    return unless inbox.respond_to?(:captain_inbox) && inbox.captain_inbox.present?
+
+    default_mode = inbox.captain_inbox.copilot_default_mode
+    merged = (additional_attributes || {}).merge('copilot_mode' => default_mode)
+    # Keep in-memory state consistent (update_columns does NOT refresh self)
+    self.additional_attributes = merged
+    # rubocop:disable Rails/SkipsModelValidations
+    update_columns(additional_attributes: merged)
+    # rubocop:enable Rails/SkipsModelValidations
+  end
 
   def validate_sla_policy
     # TODO: remove these validations once we figure out how to deal with these cases

@@ -3,6 +3,7 @@ module Enterprise::MessageTemplates::HookExecutionService
   CAPTAIN_DEBOUNCE_WINDOW = 5.seconds
   CAPTAIN_DEBOUNCE_TTL = 120 # Safety net TTL; ensure block handles normal cleanup
   CAPTAIN_DEBOUNCE_ENABLED = ActiveModel::Type::Boolean.new.cast(ENV.fetch('CAPTAIN_DEBOUNCE_ENABLED', 'true'))
+  CAPTAIN_COPILOT_MODE_ENABLED = ActiveModel::Type::Boolean.new.cast(ENV.fetch('CAPTAIN_COPILOT_MODE_ENABLED', 'false'))
 
   def trigger_templates
     super
@@ -35,6 +36,12 @@ module Enterprise::MessageTemplates::HookExecutionService
   def schedule_captain_response
     job_args = [conversation, conversation.inbox.captain_assistant]
 
+    # Copilot: skip if a draft is already pending agent action (must be before debounce lock)
+    if CAPTAIN_COPILOT_MODE_ENABLED && conversation.copilot_draft? && conversation.additional_attributes&.dig('copilot_draft_pending')
+      Rails.logger.info("[CAPTAIN] Skipping draft generation — draft pending for conversation: #{conversation.id}")
+      return
+    end
+
     # Feature flag: set CAPTAIN_DEBOUNCE_ENABLED=false in .env to disable debounce and revert to immediate dispatch
     unless CAPTAIN_DEBOUNCE_ENABLED
       Captain::Conversation::ResponseBuilderJob.perform_later(*job_args)
@@ -63,20 +70,31 @@ module Enterprise::MessageTemplates::HookExecutionService
   end
 
   def should_process_captain_response?
-    conversation.pending? && message.incoming? && inbox.captain_assistant.present?
+    return false unless message.incoming? && inbox.captain_assistant.present?
+
+    if CAPTAIN_COPILOT_MODE_ENABLED
+      !conversation.copilot_off?
+    else
+      conversation.pending?
+    end
   end
 
   def perform_handoff
-    return unless conversation.pending?
+    if CAPTAIN_COPILOT_MODE_ENABLED
+      return if conversation.copilot_off?
+    else
+      return unless conversation.pending?
+    end
 
-    Rails.logger.info("Captain limit exceeded, performing handoff mid-conversation for conversation: #{conversation.id}")
+    Rails.logger.info("Captain limit exceeded, performing handoff for conversation: #{conversation.id}")
     conversation.messages.create!(
       message_type: :outgoing,
       account_id: conversation.account.id,
       inbox_id: conversation.inbox.id,
       content: 'Transferring to another agent for further assistance.'
     )
-    conversation.bot_handoff!
+    conversation.bot_handoff! if conversation.pending?
+    conversation.update_copilot_mode!('off') if CAPTAIN_COPILOT_MODE_ENABLED
     send_out_of_office_message_after_handoff
   end
 
@@ -85,6 +103,12 @@ module Enterprise::MessageTemplates::HookExecutionService
   end
 
   def captain_handling_conversation?
-    conversation.pending? && inbox.respond_to?(:captain_assistant) && inbox.captain_assistant.present?
+    return false unless inbox.respond_to?(:captain_assistant) && inbox.captain_assistant.present?
+
+    if CAPTAIN_COPILOT_MODE_ENABLED
+      !conversation.copilot_off?
+    else
+      conversation.pending?
+    end
   end
 end

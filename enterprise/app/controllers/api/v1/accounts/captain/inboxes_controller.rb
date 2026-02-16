@@ -13,6 +13,11 @@ class Api::V1::Accounts::Captain::InboxesController < Api::V1::Accounts::BaseCon
     @captain_inbox.save!
   end
 
+  def update
+    @captain_inbox = @assistant.captain_inboxes.find_by!(inbox_id: permitted_params[:inbox_id])
+    @captain_inbox.update!(update_params)
+  end
+
   def destroy
     @captain_inbox = @assistant.captain_inboxes.find_by!(inbox_id: permitted_params[:inbox_id])
     @captain_inbox.destroy!
@@ -35,5 +40,9 @@ class Api::V1::Accounts::Captain::InboxesController < Api::V1::Accounts::BaseCon
 
   def assistant_params
     params.require(:inbox).permit(:inbox_id)
+  end
+
+  def update_params
+    params.require(:inbox).permit(:copilot_default_mode)
   end
 end

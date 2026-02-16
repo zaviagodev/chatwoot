@@ -357,4 +357,149 @@ RSpec.describe MessageTemplates::HookExecutionService do
       create(:message, conversation: conversation2, message_type: :incoming, content: 'hello')
     end
   end
+
+  context 'when CAPTAIN_COPILOT_MODE_ENABLED is true' do
+    before do
+      stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', true)
+    end
+
+    context 'when conversation is open with copilot draft mode' do
+      before do
+        conversation.update!(status: :open, additional_attributes: { 'copilot_mode' => 'draft' })
+      end
+
+      it 'schedules captain response job for open conversation in draft mode' do
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
+
+        create(:message, conversation: conversation, message_type: :incoming)
+      end
+
+      it 'suppresses greeting message when copilot is active on open conversation' do
+        inbox.update!(greeting_enabled: true, greeting_message: 'Hello!', enable_email_collect: false)
+
+        expect do
+          create(:message, conversation: conversation, message_type: :incoming)
+        end.not_to(change { conversation.reload.messages.template.count })
+      end
+
+      it 'suppresses out of office message when copilot is active on open conversation' do
+        inbox.update!(working_hours_enabled: true, out_of_office_message: 'Closed', enable_email_collect: false)
+        inbox.working_hours.find_by(day_of_week: Time.current.in_time_zone(inbox.timezone).wday).update!(
+          closed_all_day: true, open_all_day: false
+        )
+
+        expect do
+          create(:message, conversation: conversation, message_type: :incoming)
+        end.not_to(change { conversation.reload.messages.template.count })
+      end
+    end
+
+    context 'when conversation is open with copilot auto_send mode' do
+      before do
+        conversation.update!(status: :open, additional_attributes: { 'copilot_mode' => 'auto_send' })
+      end
+
+      it 'schedules captain response job for open conversation in auto_send mode' do
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
+
+        create(:message, conversation: conversation, message_type: :incoming)
+      end
+    end
+
+    context 'when conversation is open with copilot off mode' do
+      before do
+        conversation.update!(status: :open, additional_attributes: { 'copilot_mode' => 'off' })
+      end
+
+      it 'does not schedule captain response job when copilot is off' do
+        expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:set)
+        expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:perform_later)
+
+        create(:message, conversation: conversation, message_type: :incoming)
+      end
+
+      it 'does not suppress greeting when copilot is off' do
+        inbox.update!(greeting_enabled: true, greeting_message: 'Hello!', enable_email_collect: false)
+
+        expect do
+          create(:message, conversation: conversation, message_type: :incoming)
+        end.to change { conversation.reload.messages.template.count }.by(1)
+      end
+    end
+
+    context 'when conversation is pending with copilot draft mode' do
+      before do
+        conversation.update!(status: :pending, additional_attributes: { 'copilot_mode' => 'draft' })
+      end
+
+      it 'schedules captain response job for pending conversation' do
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
+
+        create(:message, conversation: conversation, message_type: :incoming)
+      end
+    end
+
+    context 'when copilot draft is pending' do
+      before do
+        conversation.update!(
+          status: :open,
+          additional_attributes: { 'copilot_mode' => 'draft', 'copilot_draft_pending' => true }
+        )
+      end
+
+      it 'does not schedule new job when draft is pending' do
+        expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:perform_later)
+        expect(Captain::Conversation::ResponseBuilderJob).not_to receive(:set)
+
+        create(:message, conversation: conversation, message_type: :incoming, content: 'Another message')
+      end
+
+      it 'schedules new job after draft is cleared' do
+        conversation.clear_copilot_draft!
+
+        job_double = double
+        expect(Captain::Conversation::ResponseBuilderJob).to receive(:set).with(wait: 5.seconds).and_return(job_double)
+        expect(job_double).to receive(:perform_later).with(conversation, assistant)
+
+        create(:message, conversation: conversation, message_type: :incoming, content: 'Follow up')
+      end
+    end
+
+    context 'when captain quota is exceeded with copilot enabled' do
+      before do
+        conversation.update!(status: :open, additional_attributes: { 'copilot_mode' => 'draft' })
+        account.update!(
+          limits: { 'captain_responses' => 100 },
+          custom_attributes: account.custom_attributes.merge('captain_responses_usage' => 100)
+        )
+      end
+
+      it 'performs handoff and sets copilot mode to off' do
+        create(:message, conversation: conversation, message_type: :incoming)
+
+        conversation.reload
+        expect(conversation.copilot_mode).to eq('off')
+      end
+
+      it 'creates handoff message for open conversation' do
+        expect do
+          create(:message, conversation: conversation, message_type: :incoming)
+        end.to change { conversation.messages.where(message_type: :outgoing).count }.by(1)
+
+        handoff_message = conversation.messages.where(message_type: :outgoing).last
+        expect(handoff_message.content).to eq('Transferring to another agent for further assistance.')
+      end
+
+      it 'does not call bot_handoff! for already-open conversation' do
+        expect(conversation).not_to receive(:bot_handoff!)
+        create(:message, conversation: conversation, message_type: :incoming)
+      end
+    end
+  end
 end

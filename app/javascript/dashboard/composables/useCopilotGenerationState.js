@@ -35,10 +35,10 @@ export function useCopilotGenerationState() {
   const showAnimation = computed(() =>
     ['debouncing', 'generating'].includes(state.value)
   );
-  const elapsedSeconds = computed(() => Math.floor(elapsedMs.value / 1000));
+  const elapsedDisplay = computed(() => (elapsedMs.value / 1000).toFixed(1));
 
   const statusText = computed(() => {
-    const timer = elapsedSeconds.value > 0 ? ` (${elapsedSeconds.value}s)` : '';
+    const timer = elapsedMs.value >= 100 ? ` (${elapsedDisplay.value}s)` : '';
     switch (state.value) {
       case 'debouncing':
         return `Waiting for more messages...${timer}`;

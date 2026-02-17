@@ -38,8 +38,14 @@ module Enterprise::MessageTemplates::HookExecutionService
 
     # Copilot: skip if a draft is already pending agent action (must be before debounce lock)
     if CAPTAIN_COPILOT_MODE_ENABLED && conversation.copilot_draft? && conversation.additional_attributes&.dig('copilot_draft_pending')
-      Rails.logger.info("[CAPTAIN] Skipping draft generation — draft pending for conversation: #{conversation.id}")
-      return
+      # Verify the Redis draft still exists; if it expired (1hr TTL) the flag is stale — clear it and proceed
+      draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: conversation.id)
+      if Redis::Alfred.get(draft_key).present?
+        Rails.logger.info("[CAPTAIN] Skipping draft generation — draft pending for conversation: #{conversation.id}")
+        return
+      end
+      Rails.logger.info("[CAPTAIN] Clearing stale copilot_draft_pending for conversation: #{conversation.id}")
+      conversation.clear_copilot_draft!
     end
 
     # Feature flag: set CAPTAIN_DEBOUNCE_ENABLED=false in .env to disable debounce and revert to immediate dispatch

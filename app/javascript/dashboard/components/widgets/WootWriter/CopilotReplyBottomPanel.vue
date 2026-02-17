@@ -18,9 +18,14 @@ const handleCancel = () => {
 };
 
 const shortcutKey = useKbd(['$mod', '+', 'enter']);
+const rejectKey = useKbd(['esc']);
 
 const acceptLabel = computed(() => {
   return `${t('GENERAL.ACCEPT')}  (${shortcutKey.value})`;
+});
+
+const discardLabel = computed(() => {
+  return `${t('GENERAL.DISCARD')}  (${rejectKey.value})`;
 });
 
 const handleSubmit = () => {
@@ -31,7 +36,7 @@ const handleSubmit = () => {
 <template>
   <div class="flex justify-between items-center p-3 pt-0">
     <NextButton
-      :label="t('GENERAL.DISCARD')"
+      :label="discardLabel"
       slate
       link
       class="!px-1 hover:!no-underline"

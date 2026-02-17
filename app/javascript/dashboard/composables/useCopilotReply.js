@@ -74,6 +74,12 @@ export function useCopilotReply() {
   const followUpCount = ref(0);
   const trackedConversationId = ref(null);
 
+  // Draft history state
+  const draftHistory = ref([]); // Array of { content, timestamp }
+  const historyIndex = ref(-1); // -1 = current/live draft, 0+ = history index
+  const savedCurrentDraft = ref(''); // Stores live draft when entering history nav
+  const MAX_HISTORY = 3;
+
   const conversationId = computed(() => currentChat.value?.id);
 
   const isActive = computed(() => showEditor.value || isGenerating.value);
@@ -128,6 +134,71 @@ export function useCopilotReply() {
    */
   function setContentReady() {
     isContentReady.value = true;
+  }
+
+  // --- Draft History Methods ---
+
+  function pushToHistory(content) {
+    if (!content) return;
+    draftHistory.value.unshift({ content, timestamp: Date.now() });
+    if (draftHistory.value.length > MAX_HISTORY) {
+      draftHistory.value.pop();
+    }
+    historyIndex.value = -1;
+  }
+
+  function clearDraftHistory() {
+    draftHistory.value = [];
+    historyIndex.value = -1;
+    savedCurrentDraft.value = '';
+  }
+
+  const hasPreviousDraft = computed(
+    () =>
+      draftHistory.value.length > 0 &&
+      historyIndex.value < draftHistory.value.length - 1
+  );
+
+  const hasNextDraft = computed(() => historyIndex.value > -1);
+
+  const draftCounter = computed(() => {
+    if (draftHistory.value.length === 0 || historyIndex.value === -1) return '';
+    const totalDrafts = draftHistory.value.length + 1;
+    const currentPosition = totalDrafts - historyIndex.value;
+    return `Draft ${currentPosition} of ${totalDrafts}`;
+  });
+
+  function navigateToPreviousDraft() {
+    if (!hasPreviousDraft.value) return;
+    if (historyIndex.value === -1 && generatedContent.value) {
+      savedCurrentDraft.value = generatedContent.value;
+    }
+    historyIndex.value += 1;
+    const draft = draftHistory.value[historyIndex.value];
+    if (draft) {
+      generatedContent.value = draft.content;
+      isContentReady.value = true;
+      showEditor.value = true;
+    }
+  }
+
+  function navigateToNextDraft() {
+    if (!hasNextDraft.value) return;
+    historyIndex.value -= 1;
+    if (historyIndex.value === -1) {
+      if (savedCurrentDraft.value) {
+        generatedContent.value = savedCurrentDraft.value;
+      }
+      isContentReady.value = true;
+      showEditor.value = true;
+    } else {
+      const draft = draftHistory.value[historyIndex.value];
+      if (draft) {
+        generatedContent.value = draft.content;
+        isContentReady.value = true;
+        showEditor.value = true;
+      }
+    }
   }
 
   /**
@@ -186,6 +257,11 @@ export function useCopilotReply() {
    */
   async function sendFollowUp(message) {
     if (!followUpContext.value || !message.trim()) return;
+
+    // Push current draft to history before generating a refinement
+    if (generatedContent.value) {
+      pushToHistory(generatedContent.value);
+    }
 
     abortController.value = new AbortController();
     isGenerating.value = true;
@@ -300,6 +376,13 @@ export function useCopilotReply() {
     isButtonDisabled,
     editorTransitionKey,
 
+    // Draft history
+    draftHistory,
+    historyIndex,
+    draftCounter,
+    hasPreviousDraft,
+    hasNextDraft,
+
     reset,
     toggleEditor,
     setContentReady,
@@ -307,5 +390,9 @@ export function useCopilotReply() {
     sendFollowUp,
     accept,
     loadDraft,
+    pushToHistory,
+    clearDraftHistory,
+    navigateToPreviousDraft,
+    navigateToNextDraft,
   };
 }

@@ -429,6 +429,7 @@ export default {
         this.setCCAndToEmailsFromLastChat();
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
+        this.copilot.clearDraftHistory();
         // Reset generation state indicator
         this.generationState.reset();
         // Clear any stale copilot draft from previous conversation
@@ -625,7 +626,15 @@ export default {
     getKeyboardEvents() {
       return {
         Escape: {
-          action: () => {
+          action: e => {
+            if (
+              this.copilot.isActive.value &&
+              this.copilot.isContentReady.value
+            ) {
+              e.preventDefault();
+              this.onCancelCopilotReply();
+              return;
+            }
             this.hideEmojiPicker();
           },
           allowOnFocusedInput: true,
@@ -649,7 +658,10 @@ export default {
         },
         '$mod+Enter': {
           action: () => {
-            if (this.copilot.isActive.value && this.isFocused) {
+            if (
+              this.copilot.isActive.value &&
+              this.copilot.isContentReady.value
+            ) {
               this.onSubmitCopilotReply();
             } else if (this.isAValidEvent('cmd_enter')) {
               this.onSendReply();
@@ -1151,6 +1163,11 @@ export default {
       this.message = this.copilot.accept();
     },
     async onCancelCopilotReply() {
+      // Save current draft to history BEFORE any reset
+      if (this.copilot.generatedContent.value) {
+        this.copilot.pushToHistory(this.copilot.generatedContent.value);
+      }
+
       if (this.copilot.currentAction.value === 'copilot_draft') {
         // Draft mode: reject via backend API (clears Redis)
         await this.$store.dispatch('rejectCopilotDraft', this.conversationId);
@@ -1275,6 +1292,9 @@ export default {
           :is-generating-content="copilot.isGenerating.value"
           :generated-content="copilot.generatedContent.value"
           :is-popout="popOutReplyBox"
+          :has-previous-draft="copilot.hasPreviousDraft.value"
+          :has-next-draft="copilot.hasNextDraft.value"
+          :draft-counter="copilot.draftCounter.value"
           :placeholder="$t('CONVERSATION.FOOTER.COPILOT_MSG_INPUT')"
           @focus="onFocus"
           @blur="onBlur"
@@ -1282,6 +1302,8 @@ export default {
           @close="copilot.showEditor.value = false"
           @content-ready="copilot.setContentReady"
           @send="copilot.sendFollowUp"
+          @navigate-previous="copilot.navigateToPreviousDraft"
+          @navigate-next="copilot.navigateToNextDraft"
         />
         <WootMessageEditor
           v-else-if="!showAudioRecorderEditor"

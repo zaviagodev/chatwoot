@@ -20,6 +20,18 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  hasPreviousDraft: {
+    type: Boolean,
+    default: false,
+  },
+  hasNextDraft: {
+    type: Boolean,
+    default: false,
+  },
+  draftCounter: {
+    type: String,
+    default: '',
+  },
 });
 
 const emit = defineEmits([
@@ -28,6 +40,8 @@ const emit = defineEmits([
   'clearSelection',
   'contentReady',
   'send',
+  'navigatePrevious',
+  'navigateNext',
 ]);
 
 const copilotEditorContent = ref('');
@@ -51,6 +65,28 @@ const onSend = () => {
 </script>
 
 <template>
+  <div
+    v-if="hasPreviousDraft || hasNextDraft || draftCounter"
+    class="flex items-center justify-between px-4 py-1"
+  >
+    <button
+      :disabled="!hasPreviousDraft"
+      class="text-n-slate-11 hover:text-n-slate-12 disabled:opacity-30 disabled:cursor-not-allowed p-1"
+      @click="$emit('navigatePrevious')"
+    >
+      <span class="i-lucide-chevron-left size-4" />
+    </button>
+    <span v-if="draftCounter" class="text-xs text-n-slate-10">
+      {{ draftCounter }}
+    </span>
+    <button
+      :disabled="!hasNextDraft"
+      class="text-n-slate-11 hover:text-n-slate-12 disabled:opacity-30 disabled:cursor-not-allowed p-1"
+      @click="$emit('navigateNext')"
+    >
+      <span class="i-lucide-chevron-right size-4" />
+    </button>
+  </div>
   <Transition
     mode="out-in"
     enter-active-class="transition-all duration-300 ease-out"

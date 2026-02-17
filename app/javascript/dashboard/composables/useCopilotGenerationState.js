@@ -35,12 +35,15 @@ export function useCopilotGenerationState() {
   const showAnimation = computed(() =>
     ['debouncing', 'generating'].includes(state.value)
   );
+  const elapsedSeconds = computed(() => Math.floor(elapsedMs.value / 1000));
+
   const statusText = computed(() => {
+    const timer = elapsedSeconds.value > 0 ? ` (${elapsedSeconds.value}s)` : '';
     switch (state.value) {
       case 'debouncing':
-        return 'Waiting for more messages...';
+        return `Waiting for more messages...${timer}`;
       case 'generating':
-        return 'Captain is drafting a reply...';
+        return `Captain is drafting a reply...${timer}`;
       case 'error':
         return errorMessage.value || 'Failed to generate reply';
       default:

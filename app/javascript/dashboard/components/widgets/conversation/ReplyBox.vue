@@ -49,6 +49,7 @@ import {
   getEffectiveChannelType,
 } from 'dashboard/helper/editorHelper';
 import { useCopilotReply } from 'dashboard/composables/useCopilotReply';
+import { useCopilotGenerationState } from 'dashboard/composables/useCopilotGenerationState';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
 import { isFileTypeAllowedForChannel } from 'shared/helpers/FileHelper';
 
@@ -97,6 +98,7 @@ export default {
 
     const replyEditor = useTemplateRef('replyEditor');
     const copilot = useCopilotReply();
+    const generationState = useCopilotGenerationState();
     const shortcutKey = useKbd(['$mod', '+', 'enter']);
 
     return {
@@ -107,6 +109,7 @@ export default {
       fetchQuotedReplyFlagFromUISettings,
       replyEditor,
       copilot,
+      generationState,
       shortcutKey,
     };
   },
@@ -426,6 +429,8 @@ export default {
         this.setCCAndToEmailsFromLastChat();
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
+        // Reset generation state indicator
+        this.generationState.reset();
         // Clear any stale copilot draft from previous conversation
         this.$store.dispatch('clearCopilotDraft');
       }
@@ -456,6 +461,7 @@ export default {
     },
     copilotDraft(draft) {
       if (draft?.content && !this.copilot.isActive.value) {
+        this.generationState.onDraftReceived();
         this.copilot.loadDraft(draft.content);
       }
     },
@@ -504,6 +510,7 @@ export default {
     emitter.on(BUS_EVENTS.INSERT_INTO_NORMAL_EDITOR, this.addIntoEditor);
     emitter.on(BUS_EVENTS.SET_REPLY_EDITOR_CONTENT, this.setEditorContent);
     emitter.on(CMD_AI_ASSIST, this.executeCopilotAction);
+    emitter.on(BUS_EVENTS.COPILOT_DRAFT_ERROR, this.onCopilotDraftError);
   },
   unmounted() {
     document.removeEventListener('paste', this.onPaste);
@@ -516,6 +523,7 @@ export default {
       this.onNewConversationModalActive
     );
     emitter.off(CMD_AI_ASSIST, this.executeCopilotAction);
+    emitter.off(BUS_EVENTS.COPILOT_DRAFT_ERROR, this.onCopilotDraftError);
   },
   methods: {
     handleInsert(article) {
@@ -1151,13 +1159,28 @@ export default {
       }
       this.copilot.reset();
     },
+    onCopilotDraftError({ message, conversationId }) {
+      // Only handle errors for the current conversation
+      if (conversationId && conversationId !== this.conversationId) return;
+      this.generationState.onDraftError(message);
+    },
   },
 };
 </script>
 
 <template>
   <ReplyBoxBanner :message="message" :is-on-private-note="isOnPrivateNote" />
-  <div ref="replyEditor" class="reply-box" :class="replyBoxClass">
+  <div
+    ref="replyEditor"
+    class="reply-box"
+    :class="[
+      replyBoxClass,
+      {
+        'reply-box--generating': generationState.showAnimation.value,
+        'reply-box--locked': generationState.isLocked.value,
+      },
+    ]"
+  >
     <ReplyTopPanel
       :mode="replyType"
       :is-reply-restricted="isReplyRestricted"
@@ -1173,6 +1196,35 @@ export default {
       @toggle-copilot="copilot.toggleEditor"
       @execute-copilot-action="executeCopilotAction"
     />
+    <!-- Copilot generation status indicator -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="generationState.statusText.value"
+        class="flex items-center gap-2 px-4 py-2 text-xs text-n-slate-11"
+      >
+        <span
+          v-if="generationState.state.value !== 'error'"
+          class="flex gap-0.5"
+        >
+          <span
+            class="size-1.5 rounded-full bg-n-iris-9 animate-bounce [animation-delay:-0.3s]"
+          />
+          <span
+            class="size-1.5 rounded-full bg-n-iris-9 animate-bounce [animation-delay:-0.15s]"
+          />
+          <span class="size-1.5 rounded-full bg-n-iris-9 animate-bounce" />
+        </span>
+        <span v-else class="i-lucide-alert-triangle text-n-ruby-9 size-3.5" />
+        <span>{{ generationState.statusText.value }}</span>
+      </div>
+    </Transition>
     <ArticleSearchPopover
       v-if="showArticleSearchPopover && connectedPortalSlug"
       :selected-portal-slug="connectedPortalSlug"
@@ -1401,5 +1453,56 @@ export default {
     transform: rotate(0deg);
     @apply ltr:left-1 rtl:right-1 -bottom-2;
   }
+}
+
+.reply-box--generating {
+  border-color: transparent;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--gradient-angle, 0deg),
+      #6366f1,
+      #8b5cf6,
+      #a78bfa,
+      #c084fc,
+      #8b5cf6,
+      #6366f1
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: copilot-border-rotate 3s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+.reply-box--locked .reply-box__top {
+  pointer-events: none;
+  opacity: 0.5;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes copilot-border-rotate {
+  to {
+    --gradient-angle: 360deg;
+  }
+}
+</style>
+
+<style>
+/* @property must be in an unscoped style block — Vue scoped styles strip it */
+@property --gradient-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
 }
 </style>

@@ -14,4 +14,5 @@ export const BUS_EVENTS = {
   INSERT_INTO_RICH_EDITOR: 'insertIntoRichEditor',
   INSERT_INTO_NORMAL_EDITOR: 'insertIntoNormalEditor',
   SET_REPLY_EDITOR_CONTENT: 'setReplyEditorContent',
+  COPILOT_DRAFT_ERROR: 'copilotDraftError',
 };

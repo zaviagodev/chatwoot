@@ -222,6 +222,10 @@ class ActionCableConnector extends BaseActionCableConnector {
   onCopilotDraftError = data => {
     if (!this.isAValidEvent(data)) return;
     this.app.$store.dispatch('setCopilotDraftError', data);
+    emitter.emit(BUS_EVENTS.COPILOT_DRAFT_ERROR, {
+      message: data.message || 'AI could not generate a reply',
+      conversationId: data.conversation_id,
+    });
     emitter.emit(BUS_EVENTS.SHOW_TOAST, {
       message: data.message || 'AI could not generate a reply',
     });

@@ -49,7 +49,6 @@ import {
   getEffectiveChannelType,
 } from 'dashboard/helper/editorHelper';
 import { useCopilotReply } from 'dashboard/composables/useCopilotReply';
-import { useCopilotGenerationState } from 'dashboard/composables/useCopilotGenerationState';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
 import { isFileTypeAllowedForChannel } from 'shared/helpers/FileHelper';
 
@@ -85,6 +84,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    generationState: {
+      type: Object,
+      required: true,
+    },
   },
   emits: ['update:popOutReplyBox'],
   setup() {
@@ -98,7 +101,6 @@ export default {
 
     const replyEditor = useTemplateRef('replyEditor');
     const copilot = useCopilotReply();
-    const generationState = useCopilotGenerationState();
     const shortcutKey = useKbd(['$mod', '+', 'enter']);
 
     return {
@@ -109,7 +111,6 @@ export default {
       fetchQuotedReplyFlagFromUISettings,
       replyEditor,
       copilot,
-      generationState,
       shortcutKey,
     };
   },
@@ -1217,35 +1218,6 @@ export default {
       @toggle-copilot="copilot.toggleEditor"
       @execute-copilot-action="executeCopilotAction"
     />
-    <!-- Copilot generation status indicator -->
-    <Transition
-      enter-active-class="transition-all duration-200 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-all duration-150 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="generationState.statusText.value"
-        class="flex items-center gap-2 px-4 py-2 text-xs text-n-slate-11"
-      >
-        <span
-          v-if="generationState.state.value !== 'error'"
-          class="flex gap-0.5"
-        >
-          <span
-            class="size-1.5 rounded-full bg-n-iris-9 animate-bounce [animation-delay:-0.3s]"
-          />
-          <span
-            class="size-1.5 rounded-full bg-n-iris-9 animate-bounce [animation-delay:-0.15s]"
-          />
-          <span class="size-1.5 rounded-full bg-n-iris-9 animate-bounce" />
-        </span>
-        <span v-else class="i-lucide-alert-triangle text-n-ruby-9 size-3.5" />
-        <span>{{ generationState.statusText.value }}</span>
-      </div>
-    </Transition>
     <ArticleSearchPopover
       v-if="showArticleSearchPopover && connectedPortalSlug"
       :selected-portal-slug="connectedPortalSlug"

@@ -407,6 +407,9 @@
           "LABEL": "List contacts",
           "CONTENT": "Show me the list of top 10 contacts. Include name, email or phone number (if available), last seen time, tags (if any)."
         }
+      },
+      "THINKING": {
+        "GENERATION_FAILED": "Failed to generate reply"
       }
     },
     "PLAYGROUND": {

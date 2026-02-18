@@ -3,12 +3,14 @@ import { ref, provide } from 'vue';
 // composable
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useLabelSuggestions } from 'dashboard/composables/useLabelSuggestions';
+import { useCopilotGenerationState } from 'dashboard/composables/useCopilotGenerationState';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 
 // components
 import ReplyBox from './ReplyBox.vue';
 import MessageList from 'next/message/MessageList.vue';
 import ConversationLabelSuggestion from './conversation/LabelSuggestion.vue';
+import CaptainThinkingBubble from './CaptainThinkingBubble.vue';
 import Banner from 'dashboard/components/ui/Banner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
@@ -42,6 +44,7 @@ export default {
     ReplyBox,
     Banner,
     ConversationLabelSuggestion,
+    CaptainThinkingBubble,
     Spinner,
   },
   mixins: [inboxMixin],
@@ -65,6 +68,8 @@ export default {
       getLabelSuggestions,
     } = useLabelSuggestions();
 
+    const generationState = useCopilotGenerationState();
+
     provide('contextMenuElementTarget', conversationPanelRef);
 
     return {
@@ -73,6 +78,7 @@ export default {
       getLabelSuggestions,
       isLabelSuggestionFeatureEnabled,
       conversationPanelRef,
+      generationState,
     };
   },
   data() {
@@ -94,6 +100,10 @@ export default {
       listLoadingStatus: 'getAllMessagesLoaded',
       currentAccountId: 'getCurrentAccountId',
     }),
+    showThinkingBubble() {
+      const s = this.generationState.state.value;
+      return s === 'debouncing' || s === 'generating' || s === 'error';
+    },
     isOpen() {
       return this.currentChat?.status === wootConstants.STATUS_TYPE.OPEN;
     },
@@ -247,6 +257,11 @@ export default {
   },
 
   watch: {
+    showThinkingBubble(isShowing) {
+      if (isShowing && !this.hasUserScrolled) {
+        this.$nextTick(() => this.scrollToBottom());
+      }
+    },
     currentChat(newChat, oldChat) {
       if (newChat.id === oldChat.id) {
         return;
@@ -490,6 +505,22 @@ export default {
         </li>
       </template>
       <template #after>
+        <Transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 translate-y-2"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 translate-y-2"
+        >
+          <CaptainThinkingBubble
+            v-if="showThinkingBubble"
+            :events="generationState.events.value"
+            :state="generationState.state.value"
+            :elapsed-display="generationState.elapsedDisplay.value"
+            :error-message="generationState.errorMessage.value"
+          />
+        </Transition>
         <ConversationLabelSuggestion
           v-if="shouldShowLabelSuggestions"
           :suggested-labels="labelSuggestions"
@@ -522,6 +553,7 @@ export default {
       </div>
       <ReplyBox
         :pop-out-reply-box="isPopOutReplyBox"
+        :generation-state="generationState"
         @update:pop-out-reply-box="isPopOutReplyBox = $event"
       />
     </div>

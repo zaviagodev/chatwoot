@@ -196,6 +196,7 @@ export function useCopilotGenerationState() {
     isLocked,
     showAnimation,
     statusText,
+    elapsedDisplay,
 
     // Methods
     onIncomingMessage,

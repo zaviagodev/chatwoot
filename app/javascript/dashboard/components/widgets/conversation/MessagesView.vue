@@ -457,7 +457,22 @@ export default {
 </script>
 
 <template>
-  <div class="flex flex-col justify-between flex-grow h-full min-w-0 m-0">
+  <div
+    class="flex flex-col justify-between flex-grow h-full min-w-0 m-0 relative overflow-hidden"
+  >
+    <Transition
+      enter-active-class="transition-opacity duration-700 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-500 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="generationState.enhancedGlow.value"
+        class="copilot-ambient-glow"
+      />
+    </Transition>
     <Banner
       v-if="!currentChat.can_reply"
       color-scheme="alert"
@@ -588,6 +603,43 @@ export default {
     .emoji-dialog {
       @apply absolute ltr:left-auto rtl:right-auto bottom-1;
     }
+  }
+}
+
+/* Apple Intelligence-style inner ambient glow during AI generation */
+.copilot-ambient-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 80px 20px rgba(99, 102, 241, 0.06),
+    inset 0 -60px 60px -20px rgba(139, 92, 246, 0.1),
+    inset 0 60px 60px -20px rgba(99, 102, 241, 0.06),
+    inset 60px 0 60px -20px rgba(192, 132, 252, 0.04),
+    inset -60px 0 60px -20px rgba(192, 132, 252, 0.04);
+  animation: copilot-ambient-pulse 3s ease-in-out infinite;
+}
+
+:global(.dark) .copilot-ambient-glow {
+  box-shadow:
+    inset 0 0 100px 25px rgba(99, 102, 241, 0.1),
+    inset 0 -70px 70px -25px rgba(139, 92, 246, 0.16),
+    inset 0 70px 70px -25px rgba(99, 102, 241, 0.1),
+    inset 70px 0 70px -25px rgba(192, 132, 252, 0.08),
+    inset -70px 0 70px -25px rgba(192, 132, 252, 0.08);
+}
+
+@keyframes copilot-ambient-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.002);
   }
 }
 </style>

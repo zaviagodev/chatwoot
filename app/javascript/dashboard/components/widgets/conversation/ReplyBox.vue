@@ -1277,6 +1277,7 @@ export default {
       replyBoxClass,
       {
         'reply-box--generating': generationState.showAnimation.value,
+        'reply-box--enhanced-glow': generationState.enhancedGlow.value,
         'reply-box--locked': generationState.isLocked.value,
       },
     ]"
@@ -1561,6 +1562,52 @@ export default {
   }
 }
 
+/* Enhanced Apple Intelligence-style glow (feature flag) */
+.reply-box--enhanced-glow {
+  &::before {
+    padding: 2px;
+    background: conic-gradient(
+      from var(--gradient-angle, 0deg),
+      #6366f1,
+      #818cf8,
+      #8b5cf6,
+      #a78bfa,
+      #c084fc,
+      #e879f9,
+      #c084fc,
+      #a78bfa,
+      #8b5cf6,
+      #818cf8,
+      #6366f1
+    );
+    animation: copilot-border-rotate 2.5s linear infinite;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--gradient-angle, 0deg),
+      #6366f1,
+      #8b5cf6,
+      #c084fc,
+      #e879f9,
+      #c084fc,
+      #8b5cf6,
+      #6366f1
+    );
+    filter: blur(16px);
+    opacity: 0.25;
+    animation:
+      copilot-border-rotate 2.5s linear infinite,
+      copilot-glow-pulse 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
 .reply-box--locked .reply-box__top {
   pointer-events: none;
   opacity: 0.5;
@@ -1571,6 +1618,16 @@ export default {
 @keyframes copilot-border-rotate {
   to {
     --gradient-angle: 360deg;
+  }
+}
+
+@keyframes copilot-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.35;
   }
 }
 </style>

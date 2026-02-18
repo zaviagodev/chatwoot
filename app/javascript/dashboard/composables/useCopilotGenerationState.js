@@ -1,6 +1,10 @@
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useMapGetter } from 'dashboard/composables/store';
 
+// Feature flag: Apple Intelligence-style glow effects during AI generation.
+// Set to false to revert to the basic rotating border only.
+const ENHANCED_GLOW_ENABLED = true;
+
 const DEBOUNCE_DURATION_MS = 5000; // Must match backend CAPTAIN_DEBOUNCE_WINDOW
 const ERROR_AUTO_RESET_MS = 5000;
 const TIMER_INTERVAL_MS = 100;
@@ -195,6 +199,7 @@ export function useCopilotGenerationState() {
     // Derived
     isLocked,
     showAnimation,
+    enhancedGlow: computed(() => ENHANCED_GLOW_ENABLED && showAnimation.value),
     statusText,
     elapsedDisplay,
 

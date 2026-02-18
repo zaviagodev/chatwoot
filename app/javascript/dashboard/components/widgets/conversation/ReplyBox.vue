@@ -1188,9 +1188,29 @@ export default {
       }
 
       if (this.copilot.currentAction.value === 'copilot_draft') {
-        // Draft mode: reject via backend API (clears Redis)
-        await this.$store.dispatch('rejectCopilotDraft', this.conversationId);
+        // Capture values before dispatch — reset may clear them
+        const conversationId = this.conversationId;
+        const store = this.$store;
+        const rejectedMsg = this.$t('CONVERSATION.COPILOT_DRAFT.REJECTED');
+        const undoMsg = this.$t('CONVERSATION.COPILOT_DRAFT.UNDO');
+
+        // Draft mode: soft-delete via backend API (5-min TTL in Redis)
+        const result = await store.dispatch(
+          'rejectCopilotDraft',
+          conversationId
+        );
         this.copilot.reset(false);
+
+        if (result?.success) {
+          useAlert(rejectedMsg, {
+            type: 'button',
+            message: undoMsg,
+            duration: 10000,
+            callback: () => {
+              store.dispatch('undoRejectCopilotDraft', conversationId);
+            },
+          });
+        }
         return;
       }
       this.copilot.reset();

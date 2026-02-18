@@ -39,6 +39,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'copilot.draft.rejected': this.onCopilotDraftRejected,
       'copilot.draft.edited': this.onCopilotDraftEdited,
       'copilot.draft.error': this.onCopilotDraftError,
+      'copilot.draft.restored': this.onCopilotDraftRestored,
     };
   }
 
@@ -215,6 +216,11 @@ class ActionCableConnector extends BaseActionCableConnector {
   };
 
   onCopilotDraftEdited = data => {
+    if (!this.isAValidEvent(data)) return;
+    this.app.$store.dispatch('setCopilotDraft', data);
+  };
+
+  onCopilotDraftRestored = data => {
     if (!this.isAValidEvent(data)) return;
     this.app.$store.dispatch('setCopilotDraft', data);
   };

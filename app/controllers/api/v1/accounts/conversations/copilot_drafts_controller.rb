@@ -1,7 +1,11 @@
 class Api::V1::Accounts::Conversations::CopilotDraftsController < Api::V1::Accounts::Conversations::BaseController
-  before_action :load_draft, only: [:show, :approve, :reject, :update]
+  before_action :load_draft, only: [:show, :approve, :reject, :update, :undo_reject]
 
   def show
+    if @draft[:status] == 'rejected'
+      return render json: { has_draft: false }
+    end
+
     render json: { has_draft: true, draft: @draft }
   end
 
@@ -27,11 +31,42 @@ class Api::V1::Accounts::Conversations::CopilotDraftsController < Api::V1::Accou
   end
 
   def reject
-    @conversation.clear_copilot_draft!
+    # Soft-delete: mark as rejected with 5-minute TTL
+    rejected_draft = @draft.merge(
+      status: 'rejected',
+      rejected_at: Time.current.iso8601,
+      rejected_by: Current.user.name
+    )
+    draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: @conversation.id)
+    Redis::Alfred.set(draft_key, rejected_draft.to_json, ex: 300)
+
+    # rubocop:disable Rails/SkipsModelValidations
+    @conversation.update_columns(
+      additional_attributes: (@conversation.additional_attributes || {}).merge('copilot_draft_pending' => false)
+    )
+    # rubocop:enable Rails/SkipsModelValidations
 
     broadcast_draft_event('copilot.draft.rejected', {})
-
     head :ok
+  end
+
+  def undo_reject
+    unless @draft[:status] == 'rejected'
+      return render json: { error: 'Draft is not in rejected state' }, status: :unprocessable_entity
+    end
+
+    restored_draft = @draft.except(:status, :rejected_at, :rejected_by)
+    draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: @conversation.id)
+    Redis::Alfred.set(draft_key, restored_draft.to_json, ex: 3600)
+
+    # rubocop:disable Rails/SkipsModelValidations
+    @conversation.update_columns(
+      additional_attributes: (@conversation.additional_attributes || {}).merge('copilot_draft_pending' => true)
+    )
+    # rubocop:enable Rails/SkipsModelValidations
+
+    broadcast_draft_event('copilot.draft.restored', { content: restored_draft[:content] })
+    render json: { has_draft: true, draft: restored_draft }, status: :ok
   end
 
   def update

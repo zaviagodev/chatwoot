@@ -27,12 +27,19 @@ export default {
       </div>
       <div v-if="action">
         <router-link
-          v-if="action.type == 'link'"
+          v-if="action.type === 'link'"
           :to="action.to"
           class="font-medium cursor-pointer select-none text-n-blue-10 hover:text-n-brand"
         >
           {{ action.message }}
         </router-link>
+        <button
+          v-else-if="action.type === 'button'"
+          class="font-medium cursor-pointer select-none text-n-blue-10 hover:text-n-brand"
+          @click="action.callback"
+        >
+          {{ action.message }}
+        </button>
       </div>
     </div>
   </div>

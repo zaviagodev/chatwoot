@@ -302,6 +302,8 @@
       "EDIT": "Edit Draft",
       "APPROVED": "Draft sent as reply",
       "REJECTED": "Draft discarded",
+      "UNDO": "Undo",
+      "UNDO_EXPIRED": "Draft has expired and can no longer be restored",
       "ERROR": "Failed to process draft",
       "AI_ERROR": "AI could not generate a reply. Please respond manually."
     }

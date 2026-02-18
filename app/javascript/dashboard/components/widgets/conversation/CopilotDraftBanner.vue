@@ -38,9 +38,24 @@ export default {
     },
     async onReject() {
       if (this.isProcessing) return;
+      // Capture conversationId BEFORE dispatching — CLEAR_COPILOT_DRAFT
+      // nulls the draft, and this.conversationId reads from this.draft
+      const conversationId = this.conversationId;
       try {
-        await this.$store.dispatch('rejectCopilotDraft', this.conversationId);
-        useAlert(this.$t('CONVERSATION.COPILOT_DRAFT.REJECTED'));
+        const result = await this.$store.dispatch(
+          'rejectCopilotDraft',
+          conversationId
+        );
+        if (result?.success) {
+          useAlert(this.$t('CONVERSATION.COPILOT_DRAFT.REJECTED'), {
+            type: 'button',
+            message: this.$t('CONVERSATION.COPILOT_DRAFT.UNDO'),
+            duration: 10000,
+            callback: () => {
+              this.$store.dispatch('undoRejectCopilotDraft', conversationId);
+            },
+          });
+        }
       } catch (error) {
         useAlert(this.$t('CONVERSATION.COPILOT_DRAFT.ERROR'));
       }

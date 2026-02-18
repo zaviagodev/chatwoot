@@ -580,12 +580,24 @@ const actions = {
       commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isRejecting: true });
       await ConversationApi.rejectCopilotDraft(conversationId);
       commit(types.CLEAR_COPILOT_DRAFT);
+      return { success: true };
     } catch (error) {
       if (error?.response?.status === 404) {
         commit(types.CLEAR_COPILOT_DRAFT);
       } else {
         commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isRejecting: false });
       }
+      return { success: false };
+    }
+  },
+
+  undoRejectCopilotDraft: async ({ commit }, conversationId) => {
+    try {
+      const response =
+        await ConversationApi.undoRejectCopilotDraft(conversationId);
+      commit(types.SET_COPILOT_DRAFT, response.data.draft);
+    } catch (error) {
+      // Draft expired or not found — no-op, user sees toast disappear naturally
     }
   },
 

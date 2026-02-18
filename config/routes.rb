@@ -143,6 +143,7 @@ Rails.application.routes.draw do
               resource :copilot_draft, only: [:show, :update], controller: 'copilot_drafts' do
                 post :approve
                 post :reject
+                post :undo_reject
               end
             end
             member do

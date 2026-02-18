@@ -149,6 +149,12 @@ class ConversationApi extends ApiClient {
     return axios.post(`${this.url}/${conversationId}/copilot_draft/reject`);
   }
 
+  undoRejectCopilotDraft(conversationId) {
+    return axios.post(
+      `${this.url}/${conversationId}/copilot_draft/undo_reject`
+    );
+  }
+
   updateCopilotDraft(conversationId, content) {
     return axios.patch(`${this.url}/${conversationId}/copilot_draft`, {
       content,

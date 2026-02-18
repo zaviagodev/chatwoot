@@ -1159,9 +1159,12 @@ export default {
     },
     async onSubmitCopilotReply() {
       if (this.copilot.currentAction.value === 'copilot_draft') {
-        // Draft mode: approve via backend API (creates outgoing message)
-        await this.$store.dispatch('approveCopilotDraft', this.conversationId);
-        this.copilot.reset(false);
+        // Draft mode: load content into main editor so user can edit before sending
+        this.message = this.copilot.accept();
+        // Clear the Redis-stored draft since we've loaded it locally
+        this.$store
+          .dispatch('rejectCopilotDraft', this.conversationId)
+          .catch(() => {});
         return;
       }
       // Normal copilot flow: insert generated content into editor

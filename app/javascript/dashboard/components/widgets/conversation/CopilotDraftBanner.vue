@@ -38,26 +38,31 @@ export default {
     },
     async onReject() {
       if (this.isProcessing) return;
-      // Capture conversationId BEFORE dispatching — CLEAR_COPILOT_DRAFT
-      // nulls the draft, and this.conversationId reads from this.draft
+      // Capture everything BEFORE dispatching — CLEAR_COPILOT_DRAFT
+      // nulls the draft, which unmounts this component (v-if="draft").
+      // After unmount, this.$t() and this.$store may be unavailable.
       const conversationId = this.conversationId;
+      const store = this.$store;
+      const rejectedMsg = this.$t('CONVERSATION.COPILOT_DRAFT.REJECTED');
+      const undoMsg = this.$t('CONVERSATION.COPILOT_DRAFT.UNDO');
+      const errorMsg = this.$t('CONVERSATION.COPILOT_DRAFT.ERROR');
       try {
-        const result = await this.$store.dispatch(
+        const result = await store.dispatch(
           'rejectCopilotDraft',
           conversationId
         );
         if (result?.success) {
-          useAlert(this.$t('CONVERSATION.COPILOT_DRAFT.REJECTED'), {
+          useAlert(rejectedMsg, {
             type: 'button',
-            message: this.$t('CONVERSATION.COPILOT_DRAFT.UNDO'),
+            message: undoMsg,
             duration: 10000,
             callback: () => {
-              this.$store.dispatch('undoRejectCopilotDraft', conversationId);
+              store.dispatch('undoRejectCopilotDraft', conversationId);
             },
           });
         }
       } catch (error) {
-        useAlert(this.$t('CONVERSATION.COPILOT_DRAFT.ERROR'));
+        useAlert(errorMsg);
       }
     },
     onEdit() {

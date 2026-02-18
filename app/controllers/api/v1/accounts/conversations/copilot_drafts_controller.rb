@@ -11,7 +11,12 @@ class Api::V1::Accounts::Conversations::CopilotDraftsController < Api::V1::Accou
       account_id: @conversation.account_id,
       inbox_id: @conversation.inbox_id,
       sender: Current.user,
-      content: @draft[:content]
+      content: @draft[:content],
+      content_attributes: {
+        generated_by: 'captain',
+        approved_by: Current.user.name,
+        edited: @draft[:edited] || false
+      }
     )
 
     @conversation.clear_copilot_draft!

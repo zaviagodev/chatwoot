@@ -1161,21 +1161,21 @@ export default {
       // Read edited content from the draft editor (user may have modified it)
       const editedContent =
         this.$refs.copilotEditorSection?.editedDraftContent || '';
-      // Use edited content if available, otherwise fall back to original
-      const content = editedContent || this.copilot.generatedContent.value;
 
       if (this.copilot.currentAction.value === 'copilot_draft') {
-        // Draft mode: send the (possibly edited) content in one click
-        this.message = content;
+        // Draft mode: save edits to Redis (if modified), then approve via backend
+        // The backend approve action persists attribution metadata in the message
+        if (
+          editedContent &&
+          editedContent !== this.copilot.generatedContent.value
+        ) {
+          await this.$store.dispatch('editCopilotDraft', {
+            conversationId: this.conversationId,
+            content: editedContent,
+          });
+        }
+        await this.$store.dispatch('approveCopilotDraft', this.conversationId);
         this.copilot.reset(false);
-        // Clear the Redis-stored draft
-        this.$store
-          .dispatch('rejectCopilotDraft', this.conversationId)
-          .catch(() => {});
-        // Send immediately
-        this.$nextTick(() => {
-          this.onSendReply();
-        });
         return;
       }
       // Normal copilot flow (suggest a reply): load into main editor

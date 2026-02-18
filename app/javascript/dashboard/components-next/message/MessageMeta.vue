@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { messageTimestamp } from 'shared/helpers/timeHelper';
 
 import MessageStatus from './MessageStatus.vue';
@@ -8,6 +9,8 @@ import { useInbox } from 'dashboard/composables/useInbox';
 import { useMessageContext } from './provider.js';
 
 import { MESSAGE_STATUS, MESSAGE_TYPES } from './constants';
+
+const { t } = useI18n();
 
 const {
   isAFacebookInbox,
@@ -123,6 +126,18 @@ const statusToShow = computed(() => {
 
   return MESSAGE_STATUS.PROGRESS;
 });
+
+const captainAttribution = computed(() => {
+  const attrs = contentAttributes.value;
+  if (!attrs?.generated_by || attrs.generated_by !== 'captain') return '';
+  const approver = attrs.approved_by;
+  if (approver) {
+    return t('CONVERSATION.CAPTAIN_ATTRIBUTION.APPROVED_BY', {
+      name: approver,
+    });
+  }
+  return t('CONVERSATION.CAPTAIN_ATTRIBUTION.AUTO_SENT');
+});
 </script>
 
 <template>
@@ -130,6 +145,13 @@ const statusToShow = computed(() => {
     <div class="inline">
       <time class="inline">{{ readableTime }}</time>
     </div>
+    <span
+      v-if="captainAttribution"
+      class="inline-flex items-center gap-0.5 text-n-iris-11"
+    >
+      <Icon icon="i-lucide-sparkles" class="size-3" />
+      <span>{{ captainAttribution }}</span>
+    </span>
     <Icon v-if="isPrivate" icon="i-lucide-lock-keyhole" class="size-3" />
     <MessageStatus v-if="showStatusIndicator" :status="statusToShow" />
   </div>

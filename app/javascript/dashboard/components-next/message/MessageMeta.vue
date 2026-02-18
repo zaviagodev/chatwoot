@@ -129,8 +129,8 @@ const statusToShow = computed(() => {
 
 const captainAttribution = computed(() => {
   const attrs = contentAttributes.value;
-  if (!attrs?.generated_by || attrs.generated_by !== 'captain') return '';
-  const approver = attrs.approved_by;
+  if (!attrs?.generatedBy || attrs.generatedBy !== 'captain') return '';
+  const approver = attrs.approvedBy;
   if (approver) {
     return t('CONVERSATION.CAPTAIN_ATTRIBUTION.APPROVED_BY', {
       name: approver,
@@ -156,4 +156,3 @@ const captainAttribution = computed(() => {
     <MessageStatus v-if="showStatusIndicator" :status="statusToShow" />
   </div>
 </template>
-`

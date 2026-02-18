@@ -45,6 +45,13 @@ const emit = defineEmits([
 ]);
 
 const copilotEditorContent = ref('');
+const editedDraftContent = ref('');
+
+const onEditedContentUpdate = content => {
+  editedDraftContent.value = content;
+};
+
+defineExpose({ editedDraftContent });
 
 const onFocus = () => {
   emit('focus');
@@ -106,6 +113,7 @@ const onSend = () => {
       :min-height="4"
       :enabled-menu-options="[]"
       :is-popout="isPopout"
+      @update:edited-content="onEditedContentUpdate"
       @focus="onFocus"
       @blur="onBlur"
       @clear-selection="clearEditorSelection"

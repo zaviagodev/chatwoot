@@ -11,8 +11,6 @@ import {
   Selection,
 } from '@chatwoot/prosemirror-schema';
 
-import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
-
 import NextButton from 'dashboard/components-next/button/Button.vue';
 
 const props = defineProps({
@@ -37,13 +35,12 @@ const emit = defineEmits([
   'blur',
   'input',
   'update:modelValue',
+  'update:editedContent',
   'keyup',
   'focus',
   'keydown',
   'send',
 ]);
-
-const { formatMessage } = useMessageFormatter();
 
 // Minimal schema with no marks or nodes for copilot input
 const copilotSchema = buildMessageSchema([], []);
@@ -67,16 +64,11 @@ const createState = (
   });
 };
 
-// we don't need them to be reactive
-// It cases weird issues where the objects are proxied
-// and then the editor doesn't work as expected
+// --- Follow-up prompt editor (bottom input) ---
 let editorView = null;
 let state = null;
 
-// reactive data
-const isTextSelected = ref(false); // Tracks text selection and prevents unnecessary re-renders on mouse selection
-
-// element refs
+const isTextSelected = ref(false);
 const editor = useTemplateRef('editor');
 
 function contentFromEditor() {
@@ -89,7 +81,6 @@ function contentFromEditor() {
 function focusEditorInputField() {
   const { tr } = editorView.state;
   const selection = Selection.atEnd(tr.doc);
-
   editorView.dispatch(tr.setSelection(selection));
   editorView.focus();
 }
@@ -105,15 +96,12 @@ function onKeyup() {
 
 function onKeydown(view, event) {
   emit('keydown');
-
-  // Handle Enter key to send message (Shift+Enter for new line)
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     handleSubmit();
-    return true; // Prevent ProseMirror's default Enter handling
+    return true;
   }
-
-  return false; // Allow other keys to work normally
+  return false;
 }
 
 function onBlur() {
@@ -130,14 +118,8 @@ function checkSelection(editorState) {
   isTextSelected.value = hasSelection;
 }
 
-// computed properties
-const plugins = computed(() => {
-  return [];
-});
-
-const enabledMenuOptions = computed(() => {
-  return [];
-});
+const plugins = computed(() => []);
+const enabledMenuOptions = computed(() => []);
 
 function reloadState() {
   state = createState(
@@ -170,7 +152,52 @@ function createEditorView() {
   });
 }
 
-// watchers
+// --- Draft content editor (editable generated content) ---
+let draftEditorView = null;
+let draftState = null;
+const draftEditor = useTemplateRef('draftEditor');
+const editedContent = ref('');
+const isDraftModified = ref(false);
+
+function contentFromDraftEditor() {
+  if (draftEditorView) {
+    return MessageMarkdownSerializer.serialize(draftEditorView.state.doc);
+  }
+  return '';
+}
+
+function createDraftEditorView() {
+  if (!draftEditor.value) return;
+
+  draftState = createState(props.generatedContent, '', [], []);
+  draftEditorView = new EditorView(draftEditor.value, {
+    state: draftState,
+    dispatchTransaction: tx => {
+      draftState = draftState.apply(tx);
+      draftEditorView.updateState(draftState);
+      if (tx.docChanged) {
+        editedContent.value = contentFromDraftEditor();
+        isDraftModified.value = editedContent.value !== props.generatedContent;
+        emit('update:editedContent', editedContent.value);
+      }
+    },
+  });
+  editedContent.value = props.generatedContent;
+}
+
+function resetDraftToOriginal() {
+  if (!draftEditorView) return;
+  draftState = createState(props.generatedContent, '', [], []);
+  draftEditorView.updateState(draftState);
+  editedContent.value = props.generatedContent;
+  isDraftModified.value = false;
+  emit('update:editedContent', editedContent.value);
+}
+
+// Expose reset for parent components
+defineExpose({ resetDraftToOriginal });
+
+// --- Watchers ---
 watch(
   computed(() => props.modelValue),
   (newValue = '') => {
@@ -187,17 +214,36 @@ watch(
   }
 );
 
-// lifecycle
+// When generatedContent changes (new draft from Captain), reload draft editor
+watch(
+  computed(() => props.generatedContent),
+  newContent => {
+    if (draftEditorView && newContent) {
+      draftState = createState(newContent, '', [], []);
+      draftEditorView.updateState(draftState);
+      editedContent.value = newContent;
+      isDraftModified.value = false;
+      emit('update:editedContent', newContent);
+    }
+  }
+);
+
+// --- Lifecycle ---
 onMounted(() => {
+  // Follow-up prompt editor
   state = createState(
     props.modelValue,
     props.placeholder,
     plugins.value,
     enabledMenuOptions.value
   );
-
   createEditorView();
   editorView.updateState(state);
+
+  // Draft content editor
+  if (props.generatedContent) {
+    createDraftEditorView();
+  }
 
   if (props.autofocus) {
     focusEditorInputField();
@@ -207,15 +253,27 @@ onMounted(() => {
 
 <template>
   <div class="space-y-2 mb-4">
+    <!-- Editable draft content -->
     <div
+      v-if="generatedContent"
       class="overflow-y-auto"
       :class="{ 'max-h-96': isPopout, 'max-h-56': !isPopout }"
     >
-      <p
-        v-dompurify-html="formatMessage(generatedContent, false)"
-        class="text-n-iris-12 text-sm prose-sm font-normal !mb-4"
-      />
+      <div class="editor-root editor--draft">
+        <div ref="draftEditor" />
+      </div>
+      <div v-if="isDraftModified" class="flex justify-end mt-1">
+        <NextButton
+          icon="i-lucide-undo-2"
+          xs
+          slate
+          link
+          class="!px-1"
+          @click="resetDraftToOriginal"
+        />
+      </div>
     </div>
+    <!-- Follow-up prompt editor -->
     <div class="editor-root relative editor--copilot space-x-2">
       <div ref="editor" />
       <div class="flex items-center justify-end absolute right-2 bottom-2">
@@ -233,6 +291,19 @@ onMounted(() => {
 
 <style lang="scss">
 @import '@chatwoot/prosemirror-schema/src/styles/base.scss';
+
+.editor--draft {
+  .ProseMirror-woot-style {
+    min-height: 3rem;
+    max-height: none !important;
+    overflow: auto;
+    @apply text-n-iris-12 text-sm font-normal px-1;
+
+    p {
+      @apply mb-1;
+    }
+  }
+}
 
 .editor--copilot {
   @apply bg-n-iris-5 rounded;

@@ -1158,16 +1158,27 @@ export default {
       this.$emit('update:popOutReplyBox', !this.popOutReplyBox);
     },
     async onSubmitCopilotReply() {
+      // Read edited content from the draft editor (user may have modified it)
+      const editedContent =
+        this.$refs.copilotEditorSection?.editedDraftContent || '';
+      // Use edited content if available, otherwise fall back to original
+      const content = editedContent || this.copilot.generatedContent.value;
+
       if (this.copilot.currentAction.value === 'copilot_draft') {
-        // Draft mode: load content into main editor so user can edit before sending
-        this.message = this.copilot.accept();
-        // Clear the Redis-stored draft since we've loaded it locally
+        // Draft mode: send the (possibly edited) content in one click
+        this.message = content;
+        this.copilot.reset(false);
+        // Clear the Redis-stored draft
         this.$store
           .dispatch('rejectCopilotDraft', this.conversationId)
           .catch(() => {});
+        // Send immediately
+        this.$nextTick(() => {
+          this.onSendReply();
+        });
         return;
       }
-      // Normal copilot flow: insert generated content into editor
+      // Normal copilot flow (suggest a reply): load into main editor
       this.message = this.copilot.accept();
     },
     async onCancelCopilotReply() {
@@ -1267,6 +1278,7 @@ export default {
         />
         <CopilotEditorSection
           v-if="copilot.isActive.value && !showAudioRecorderEditor"
+          ref="copilotEditorSection"
           :show-copilot-editor="copilot.showEditor.value"
           :is-generating-content="copilot.isGenerating.value"
           :generated-content="copilot.generatedContent.value"

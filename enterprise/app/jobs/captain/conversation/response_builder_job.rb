@@ -147,7 +147,10 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
       agent_name: @response['agent_name'],
       generated_at: Time.current.iso8601,
       conversation_id: @conversation.id,
-      conversation_display_id: @conversation.display_id
+      conversation_display_id: @conversation.display_id,
+      input_tokens: @response.dig('llm_usage', :input_tokens),
+      output_tokens: @response.dig('llm_usage', :output_tokens),
+      model: @response.dig('llm_usage', :model)
     }
 
     # Store in Redis (1 hour TTL)

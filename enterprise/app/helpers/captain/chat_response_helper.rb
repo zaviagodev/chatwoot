@@ -7,7 +7,7 @@ module Captain::ChatResponseHelper
     parsed = parse_json_response(response.content)
 
     persist_message(parsed, 'assistant')
-    parsed
+    parsed.merge('llm_usage' => @llm_usage || {})
   end
 
   def parse_json_response(content)

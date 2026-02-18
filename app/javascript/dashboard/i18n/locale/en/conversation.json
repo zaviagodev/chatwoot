@@ -254,7 +254,8 @@
     "SENT_BY": "Sent by:",
     "CAPTAIN_ATTRIBUTION": {
       "APPROVED_BY": "Captain · Approved by {name}",
-      "AUTO_SENT": "Captain · Auto-sent"
+      "AUTO_SENT": "Captain · Auto-sent",
+      "TOKEN_USAGE": "{model} · {input}→{output} ({total})"
     },
     "BOT": "Bot",
     "NATIVE_APP": "Native app",

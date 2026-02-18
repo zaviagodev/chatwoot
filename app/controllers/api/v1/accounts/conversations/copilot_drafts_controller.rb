@@ -19,7 +19,10 @@ class Api::V1::Accounts::Conversations::CopilotDraftsController < Api::V1::Accou
       content_attributes: {
         generated_by: 'captain',
         approved_by: Current.user.name,
-        edited: @draft[:edited] || false
+        edited: @draft[:edited] || false,
+        input_tokens: @draft[:input_tokens],
+        output_tokens: @draft[:output_tokens],
+        model: @draft[:model]
       }
     )
 

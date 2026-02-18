@@ -127,6 +127,14 @@ const statusToShow = computed(() => {
   return MESSAGE_STATUS.PROGRESS;
 });
 
+const tokenInfo = computed(() => {
+  const attrs = contentAttributes.value;
+  if (attrs?.generatedBy !== 'captain' || !attrs.inputTokens) return null;
+  const input = attrs.inputTokens || 0;
+  const output = attrs.outputTokens || 0;
+  return { input, output, total: input + output, model: attrs.model || '' };
+});
+
 const captainAttribution = computed(() => {
   const attrs = contentAttributes.value;
   if (!attrs?.generatedBy || attrs.generatedBy !== 'captain') return '';
@@ -151,6 +159,19 @@ const captainAttribution = computed(() => {
     >
       <Icon icon="i-lucide-sparkles" class="size-3" />
       <span>{{ captainAttribution }}</span>
+    </span>
+    <span
+      v-if="tokenInfo"
+      class="inline-flex items-center gap-0.5 text-n-slate-9"
+    >
+      <span>{{
+        t('CONVERSATION.CAPTAIN_ATTRIBUTION.TOKEN_USAGE', {
+          model: tokenInfo.model,
+          input: tokenInfo.input,
+          output: tokenInfo.output,
+          total: tokenInfo.total,
+        })
+      }}</span>
     </span>
     <Icon v-if="isPrivate" icon="i-lucide-lock-keyhole" class="size-3" />
     <MessageStatus v-if="showStatusIndicator" :status="statusToShow" />

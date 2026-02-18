@@ -4,6 +4,7 @@ import { useMapGetter } from 'dashboard/composables/store';
 const DEBOUNCE_DURATION_MS = 5000; // Must match backend CAPTAIN_DEBOUNCE_WINDOW
 const ERROR_AUTO_RESET_MS = 5000;
 const TIMER_INTERVAL_MS = 100;
+const GENERATING_TIMEOUT_MS = 60_000; // Safety net: auto-reset if draft never arrives
 
 /**
  * Composable for tracking the copilot draft generation lifecycle.
@@ -27,6 +28,7 @@ export function useCopilotGenerationState() {
   let debounceTimer = null;
   let elapsedTimer = null;
   let errorResetTimer = null;
+  let generatingTimeoutTimer = null;
 
   // --- Computed ---
   const isLocked = computed(() =>
@@ -81,6 +83,10 @@ export function useCopilotGenerationState() {
       clearTimeout(errorResetTimer);
       errorResetTimer = null;
     }
+    if (generatingTimeoutTimer) {
+      clearTimeout(generatingTimeoutTimer);
+      generatingTimeoutTimer = null;
+    }
   }
 
   // --- Phase 2 extensibility ---
@@ -117,6 +123,10 @@ export function useCopilotGenerationState() {
       if (state.value === 'debouncing') {
         logEvent('debounce_complete', 'Processing started');
         state.value = 'generating';
+        // Safety net: auto-reset if draft never arrives (e.g., missed WebSocket event)
+        generatingTimeoutTimer = setTimeout(() => {
+          if (state.value === 'generating') reset();
+        }, GENERATING_TIMEOUT_MS);
       }
     }, DEBOUNCE_DURATION_MS);
   }

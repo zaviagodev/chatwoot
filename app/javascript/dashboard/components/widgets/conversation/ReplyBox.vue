@@ -461,9 +461,13 @@ export default {
       deep: true,
     },
     copilotDraft(draft) {
-      if (draft?.content && !this.copilot.isActive.value) {
+      if (draft?.content) {
+        // Always reset the generation state machine (stops "drafting..." indicator)
         this.generationState.onDraftReceived();
-        this.copilot.loadDraft(draft.content);
+        // Only load draft into editor if copilot panel isn't already active
+        if (!this.copilot.isActive.value) {
+          this.copilot.loadDraft(draft.content);
+        }
       }
     },
     conversationIdByRoute(conversationId, oldConversationId) {

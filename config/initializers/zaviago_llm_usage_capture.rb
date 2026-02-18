@@ -16,7 +16,7 @@ module ZaviagoLlmUsageCapture
       Thread.current[:captain_llm_usage] = {
         input_tokens: message.respond_to?(:input_tokens) ? message.input_tokens : nil,
         output_tokens: message.respond_to?(:output_tokens) ? message.output_tokens : nil,
-        model: model.to_s
+        model: model.id
       }
     rescue StandardError => e
       Rails.logger.warn "[Zaviago] LLM usage capture error: #{e.message}"

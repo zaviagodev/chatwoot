@@ -478,6 +478,17 @@ const avatarTooltip = computed(() => {
   return `${t('CONVERSATION.SENT_BY')} ${avatarInfo.value.name}`;
 });
 
+const tokenInfo = computed(() => {
+  const attrs = props.contentAttributes;
+  if (attrs?.generatedBy !== 'captain' || !attrs.inputTokens) return null;
+  const input = attrs.inputTokens || 0;
+  const output = attrs.outputTokens || 0;
+  const model = attrs.model || '';
+  // Skip if model is a Ruby object inspect string from the pre-fix data
+  if (model.startsWith('#<')) return null;
+  return { input, output, total: input + output, model };
+});
+
 const setupHighlightTimer = () => {
   if (Number(route.query.messageId) !== Number(props.id)) {
     return;
@@ -559,6 +570,22 @@ provideMessageContext({
         :error="contentAttributes.externalError"
         @retry="emit('retry')"
       />
+      <div
+        v-if="tokenInfo"
+        class="[grid-area:meta] flex text-xs text-n-slate-9"
+        :class="flexOrientationClass"
+      >
+        <span class="inline-flex items-center gap-0.5">
+          <span>{{
+            t('CONVERSATION.CAPTAIN_ATTRIBUTION.TOKEN_USAGE', {
+              model: tokenInfo.model,
+              input: tokenInfo.input,
+              output: tokenInfo.output,
+              total: tokenInfo.total,
+            })
+          }}</span>
+        </span>
+      </div>
     </div>
     <div v-if="shouldShowContextMenu" class="context-menu-wrap">
       <ContextMenu

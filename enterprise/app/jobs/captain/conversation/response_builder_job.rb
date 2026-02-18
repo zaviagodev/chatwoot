@@ -142,15 +142,17 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   def store_and_broadcast_draft
     validate_message_content!(@response['response'])
 
+    llm_usage = @response['llm_usage'] || {}
+
     draft_payload = {
       content: @response['response'],
       agent_name: @response['agent_name'],
       generated_at: Time.current.iso8601,
       conversation_id: @conversation.id,
       conversation_display_id: @conversation.display_id,
-      input_tokens: @response.dig('llm_usage', :input_tokens),
-      output_tokens: @response.dig('llm_usage', :output_tokens),
-      model: @response.dig('llm_usage', :model)
+      input_tokens: llm_usage[:input_tokens] || llm_usage['input_tokens'],
+      output_tokens: llm_usage[:output_tokens] || llm_usage['output_tokens'],
+      model: llm_usage[:model] || llm_usage['model']
     }
 
     # Store in Redis (1 hour TTL)

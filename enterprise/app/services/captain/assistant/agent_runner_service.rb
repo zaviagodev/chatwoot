@@ -79,6 +79,15 @@ class Captain::Assistant::AgentRunnerService
     # Extract agent name from context
     response['agent_name'] = result.context&.dig(:current_agent)
 
+    # Thread token usage from RunResult into response for downstream consumption
+    if result.usage
+      response['llm_usage'] = {
+        'input_tokens' => result.usage.input_tokens,
+        'output_tokens' => result.usage.output_tokens,
+        'model' => @assistant.send(:agent_model)
+      }
+    end
+
     response
   end
 

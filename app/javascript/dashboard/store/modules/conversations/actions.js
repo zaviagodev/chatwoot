@@ -580,6 +580,7 @@ const actions = {
       commit(types.SET_COPILOT_DRAFT_UI_FLAG, { isRejecting: true });
       await ConversationApi.rejectCopilotDraft(conversationId);
       commit(types.CLEAR_COPILOT_DRAFT);
+      commit(types.SET_COPILOT_DRAFT_REJECTED_FOR, conversationId);
       return { success: true };
     } catch (error) {
       if (error?.response?.status === 404) {
@@ -596,9 +597,14 @@ const actions = {
       const response =
         await ConversationApi.undoRejectCopilotDraft(conversationId);
       commit(types.SET_COPILOT_DRAFT, response.data.draft);
+      commit(types.CLEAR_COPILOT_DRAFT_REJECTED_FOR);
     } catch (error) {
       // Draft expired or not found — no-op, user sees toast disappear naturally
     }
+  },
+
+  clearCopilotDraftRejected: ({ commit }) => {
+    commit(types.CLEAR_COPILOT_DRAFT_REJECTED_FOR);
   },
 
   editCopilotDraft: async ({ commit }, { conversationId, content }) => {

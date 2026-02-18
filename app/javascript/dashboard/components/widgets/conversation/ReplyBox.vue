@@ -152,7 +152,14 @@ export default {
       accountId: 'getCurrentAccountId',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
       copilotDraft: 'getCopilotDraft',
+      copilotDraftRejectedFor: 'getCopilotDraftRejectedFor',
     }),
+    showDraftRejectedBanner() {
+      return (
+        this.copilotDraftRejectedFor === this.conversationId &&
+        !this.copilot.isActive.value
+      );
+    },
     currentContact() {
       const senderId = this.currentChat?.meta?.sender?.id;
       if (!senderId) return {};
@@ -476,6 +483,7 @@ export default {
         this.setToDraft(oldConversationId, this.replyType);
         this.getFromDraft();
         this.resetRecorderAndClearAttachments();
+        this.$store.dispatch('clearCopilotDraftRejected');
       }
     },
     message() {
@@ -1215,6 +1223,12 @@ export default {
       }
       this.copilot.reset();
     },
+    onUndoDraftRejection() {
+      this.$store.dispatch('undoRejectCopilotDraft', this.conversationId);
+    },
+    onDismissDraftRejection() {
+      this.$store.dispatch('clearCopilotDraftRejected');
+    },
     onCopilotDraftError({ message, conversationId }) {
       // Only handle errors for the current conversation
       if (conversationId && conversationId !== this.conversationId) return;
@@ -1226,6 +1240,36 @@ export default {
 
 <template>
   <ReplyBoxBanner :message="message" :is-on-private-note="isOnPrivateNote" />
+  <Transition
+    enter-active-class="transition-all duration-200 ease-out"
+    enter-from-class="opacity-0 -translate-y-1"
+    enter-to-class="opacity-100 translate-y-0"
+    leave-active-class="transition-all duration-150 ease-in"
+    leave-from-class="opacity-100 translate-y-0"
+    leave-to-class="opacity-0 -translate-y-1"
+  >
+    <div
+      v-if="showDraftRejectedBanner"
+      class="flex items-center justify-between mx-2 mb-1 px-3 py-2 rounded-lg bg-n-slate-2 dark:bg-n-solid-3 border border-n-weak"
+    >
+      <span class="text-xs text-n-slate-11">
+        {{ $t('CONVERSATION.COPILOT_DRAFT.REJECTED') }}
+      </span>
+      <div class="flex items-center gap-2">
+        <button
+          class="text-xs font-medium text-n-blue-10 hover:text-n-brand cursor-pointer"
+          @click="onUndoDraftRejection"
+        >
+          {{ $t('CONVERSATION.COPILOT_DRAFT.UNDO') }}
+        </button>
+        <button
+          class="text-xs text-n-slate-9 hover:text-n-slate-11 cursor-pointer i-lucide-x size-3.5"
+          :aria-label="$t('CONVERSATION.REPLYBOX.DISMISS_REPLY')"
+          @click="onDismissDraftRejection"
+        />
+      </div>
+    </div>
+  </Transition>
   <div
     ref="replyEditor"
     class="reply-box"

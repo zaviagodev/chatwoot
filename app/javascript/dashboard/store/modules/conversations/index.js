@@ -25,6 +25,7 @@ const state = {
   copilotAssistant: {},
   copilotDraft: null,
   copilotDraftUIFlags: {},
+  copilotDraftRejectedFor: null,
 };
 
 const getConversationById = _state => conversationId => {
@@ -372,6 +373,12 @@ export const mutations = {
   },
   [types.SET_COPILOT_DRAFT_UI_FLAG](_state, flags) {
     _state.copilotDraftUIFlags = { ..._state.copilotDraftUIFlags, ...flags };
+  },
+  [types.SET_COPILOT_DRAFT_REJECTED_FOR](_state, conversationId) {
+    _state.copilotDraftRejectedFor = conversationId;
+  },
+  [types.CLEAR_COPILOT_DRAFT_REJECTED_FOR](_state) {
+    _state.copilotDraftRejectedFor = null;
   },
 };
 

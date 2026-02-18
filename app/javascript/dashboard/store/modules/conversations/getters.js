@@ -167,6 +167,9 @@ const getters = {
   getCopilotDraftUIFlags: _state => {
     return _state.copilotDraftUIFlags;
   },
+  getCopilotDraftRejectedFor: _state => {
+    return _state.copilotDraftRejectedFor;
+  },
 };
 
 export default getters;

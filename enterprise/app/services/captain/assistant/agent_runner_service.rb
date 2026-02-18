@@ -23,6 +23,11 @@ class Captain::Assistant::AgentRunnerService
     message_to_process = extract_last_user_message(message_history)
     runner = Agents::Runner.with_agents(*agents)
     runner = add_callbacks_to_runner(runner) if @callbacks.any?
+
+    # Use Thread.current to capture token usage from RubyLLM's on_end_message callback.
+    # The ai-agents gem doesn't populate RunResult.usage, so we capture it via
+    # a prepended hook on RubyLLM::Chat that fires on every LLM response.
+    Thread.current[:captain_llm_usage] = nil
     result = runner.run(message_to_process, context: context, max_turns: 100)
 
     process_agent_result(result)
@@ -79,12 +84,16 @@ class Captain::Assistant::AgentRunnerService
     # Extract agent name from context
     response['agent_name'] = result.context&.dig(:current_agent)
 
-    # Thread token usage from RunResult into response for downstream consumption
-    if result.usage
+    # Thread token usage into response for downstream consumption.
+    # The ai-agents gem doesn't populate RunResult.usage, so we read from
+    # Thread.current[:captain_llm_usage] set by ZaviagoLlmUsageCapture initializer.
+    captured = Thread.current[:captain_llm_usage]
+    Thread.current[:captain_llm_usage] = nil
+    if captured && (captured[:input_tokens].to_i > 0 || captured[:output_tokens].to_i > 0)
       response['llm_usage'] = {
-        'input_tokens' => result.usage.input_tokens,
-        'output_tokens' => result.usage.output_tokens,
-        'model' => @assistant.send(:agent_model)
+        'input_tokens' => captured[:input_tokens],
+        'output_tokens' => captured[:output_tokens],
+        'model' => captured[:model] || @assistant.send(:agent_model)
       }
     end
 

@@ -154,11 +154,19 @@ export function useCopilotGenerationState() {
   }
 
   // --- Watchers ---
+  // Track whether the initial message batch has loaded for the current conversation.
+  // Without this, opening a conversation whose last message is incoming would
+  // trigger the generation animation immediately (messages go from 0 → N).
+  let initialLoadDone = false;
+
   // Conversation switch: reset state when agent changes conversation
   watch(
     () => currentChat.value?.id,
     (newId, oldId) => {
-      if (newId !== oldId && state.value !== 'idle') reset();
+      if (newId !== oldId) {
+        initialLoadDone = false;
+        if (state.value !== 'idle') reset();
+      }
     }
   );
 
@@ -167,6 +175,11 @@ export function useCopilotGenerationState() {
     () => currentChat.value?.messages?.length,
     (newLen, oldLen) => {
       if (!newLen || !oldLen || newLen <= oldLen) return;
+      // Skip the initial batch load — only trigger on real-time additions
+      if (!initialLoadDone) {
+        initialLoadDone = true;
+        return;
+      }
       const messages = currentChat.value?.messages || [];
       const lastMsg = messages[messages.length - 1];
       // G6: Only trigger for incoming customer messages, not private notes

@@ -525,11 +525,13 @@ const actions = {
   },
 
   getInboxCaptainAssistantById: async ({ commit }, conversationId) => {
+    // Clear stale data immediately so UI doesn't show wrong assistant during async gap
+    commit(types.SET_INBOX_CAPTAIN_ASSISTANT, { assistant: null });
     try {
       const response = await ConversationApi.getInboxAssistant(conversationId);
       commit(types.SET_INBOX_CAPTAIN_ASSISTANT, response.data);
     } catch (error) {
-      // Handle error
+      // Already cleared above — no-op on error (copilotAssistant stays null)
     }
   },
 

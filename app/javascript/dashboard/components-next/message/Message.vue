@@ -134,7 +134,7 @@ const props = defineProps({
   sourceId: { type: String, default: '' }, // eslint-disable-line vue/no-unused-properties
 });
 
-const emit = defineEmits(['retry']);
+const emit = defineEmits(['retry', 'learnThis']);
 
 const contextMenuPosition = ref({});
 const showBackgroundHighlight = ref(false);
@@ -143,6 +143,7 @@ const { t } = useI18n();
 const route = useRoute();
 const inboxGetter = useMapGetter('inboxes/getInbox');
 const inbox = computed(() => inboxGetter.value(props.inboxId) || {});
+const copilotAssistant = useMapGetter('getCopilotAssistant');
 
 /**
  * Computes the message variant based on props
@@ -363,6 +364,7 @@ const contextMenuEnabledOptions = computed(() => {
   const hasAttachments = !!(props.attachments && props.attachments.length > 0);
 
   const isOutgoing = props.messageType === MESSAGE_TYPES.OUTGOING;
+  const isIncoming = props.messageType === MESSAGE_TYPES.INCOMING;
   const isFailedOrProcessing =
     props.status === MESSAGE_STATUS.FAILED ||
     props.status === MESSAGE_STATUS.PROGRESS;
@@ -380,6 +382,11 @@ const contextMenuEnabledOptions = computed(() => {
       !props.private &&
       props.inboxSupportsReplyTo.outgoing &&
       !isFailedOrProcessing,
+    learnThis:
+      isIncoming &&
+      hasText &&
+      !isMessageDeleted.value &&
+      !!copilotAssistant.value?.id,
   };
 });
 
@@ -421,6 +428,10 @@ function openContextMenu(e) {
 function closeContextMenu() {
   showContextMenu.value = false;
   contextMenuPosition.value = { x: null, y: null };
+}
+
+function handleLearnThis(data) {
+  emit('learnThis', data);
 }
 
 function handleReplyTo() {
@@ -598,6 +609,7 @@ provideMessageContext({
         @open="openContextMenu"
         @close="closeContextMenu"
         @reply-to="handleReplyTo"
+        @learn-this="handleLearnThis"
       />
     </div>
   </div>

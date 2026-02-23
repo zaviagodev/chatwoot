@@ -717,20 +717,30 @@ describe('#addMentions', () => {
   });
 
   describe('#getInboxCaptainAssistantById', () => {
-    it('fetches inbox assistant by id', async () => {
+    it('clears then fetches inbox assistant by id', async () => {
       axios.get.mockResolvedValue({
         data: {
-          id: 1,
-          name: 'Assistant',
-          description: 'Assistant description',
+          assistant: { id: 1, name: 'Assistant' },
         },
       });
       await actions.getInboxCaptainAssistantById({ commit }, 1);
       expect(commit.mock.calls).toEqual([
+        // First commit: clear stale data
+        [types.SET_INBOX_CAPTAIN_ASSISTANT, { assistant: null }],
+        // Second commit: set fetched data
         [
           types.SET_INBOX_CAPTAIN_ASSISTANT,
-          { id: 1, name: 'Assistant', description: 'Assistant description' },
+          { assistant: { id: 1, name: 'Assistant' } },
         ],
+      ]);
+    });
+
+    it('clears assistant and stays cleared on error', async () => {
+      axios.get.mockRejectedValue(new Error('Network error'));
+      await actions.getInboxCaptainAssistantById({ commit }, 1);
+      expect(commit.mock.calls).toEqual([
+        // Only the initial clear — no second commit on error
+        [types.SET_INBOX_CAPTAIN_ASSISTANT, { assistant: null }],
       ]);
     });
   });

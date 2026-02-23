@@ -5,17 +5,20 @@ import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useLabelSuggestions } from 'dashboard/composables/useLabelSuggestions';
 import { useCopilotGenerationState } from 'dashboard/composables/useCopilotGenerationState';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
+import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 
 // components
 import ReplyBox from './ReplyBox.vue';
 import MessageList from 'next/message/MessageList.vue';
 import ConversationLabelSuggestion from './conversation/LabelSuggestion.vue';
 import CaptainThinkingBubble from './CaptainThinkingBubble.vue';
+import LearnThisModal from './LearnThisModal.vue';
 import Banner from 'dashboard/components/ui/Banner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
 // stores and apis
 import { mapGetters } from 'vuex';
+import { useAlert } from 'dashboard/composables';
 
 // mixins
 import inboxMixin, { INBOX_FEATURES } from 'shared/mixins/inboxMixin';
@@ -45,6 +48,7 @@ export default {
     Banner,
     ConversationLabelSuggestion,
     CaptainThinkingBubble,
+    LearnThisModal,
     Spinner,
   },
   mixins: [inboxMixin],
@@ -69,6 +73,7 @@ export default {
     } = useLabelSuggestions();
 
     const generationState = useCopilotGenerationState();
+    const { getPlainText } = useMessageFormatter();
 
     provide('contextMenuElementTarget', conversationPanelRef);
 
@@ -79,6 +84,7 @@ export default {
       isLabelSuggestionFeatureEnabled,
       conversationPanelRef,
       generationState,
+      getPlainText,
     };
   },
   data() {
@@ -90,6 +96,11 @@ export default {
       isProgrammaticScroll: false,
       messageSentSinceOpened: false,
       labelSuggestions: [],
+      isLearnThisModalOpen: false,
+      learnThisQuestion: '',
+      learnThisAnswer: '',
+      learnThisAssistantId: null,
+      learnThisAssistantName: '',
     };
   },
 
@@ -268,6 +279,7 @@ export default {
       }
       this.fetchAllAttachmentsFromCurrentChat();
       this.fetchSuggestions();
+      this.fetchCaptainAssistant();
       this.messageSentSinceOpened = false;
     },
   },
@@ -285,6 +297,7 @@ export default {
     this.addScrollListener();
     this.fetchAllAttachmentsFromCurrentChat();
     this.fetchSuggestions();
+    this.fetchCaptainAssistant();
   },
 
   unmounted() {
@@ -452,6 +465,52 @@ export default {
       const payload = useSnakeCase(message);
       await this.$store.dispatch('sendMessageWithData', payload);
     },
+    fetchCaptainAssistant() {
+      if (this.currentChat?.id) {
+        this.$store.dispatch(
+          'getInboxCaptainAssistantById',
+          this.currentChat.id
+        );
+      }
+    },
+    handleLearnThis({ content, messageId }) {
+      // 1. Resolve assistant from store (already fetched on conversation open)
+      const assistant = this.$store.getters.getCopilotAssistant;
+      if (!assistant?.id) {
+        useAlert(this.$t('CONVERSATION.LEARN_THIS_MODAL.NO_ASSISTANT'));
+        return;
+      }
+
+      // 2. Pre-fill question (already plain text from context menu)
+      this.learnThisQuestion = content;
+
+      // 3. Pre-fill answer: find next outgoing message after messageId
+      const messages = this.getMessages;
+      const msgIndex = messages.findIndex(m => m.id === messageId);
+      let answerText = '';
+      if (msgIndex !== -1) {
+        for (let i = msgIndex + 1; i < messages.length; i += 1) {
+          // message_type 1 = outgoing (snake_case in raw messages)
+          if (messages[i].message_type === 1 && messages[i].content) {
+            answerText = this.getPlainText(messages[i].content);
+            break;
+          }
+        }
+      }
+      this.learnThisAnswer = answerText;
+
+      // 4. Set assistant data and open modal
+      this.learnThisAssistantId = assistant.id;
+      this.learnThisAssistantName = assistant.name;
+      this.isLearnThisModalOpen = true;
+    },
+    closeLearnThisModal() {
+      this.isLearnThisModalOpen = false;
+      this.learnThisQuestion = '';
+      this.learnThisAnswer = '';
+      this.learnThisAssistantId = null;
+      this.learnThisAssistantName = '';
+    },
   },
 };
 </script>
@@ -496,6 +555,7 @@ export default {
       :inbox-supports-reply-to="inboxSupportsReplyTo"
       :messages="getMessages"
       @retry="handleMessageRetry"
+      @learn-this="handleLearnThis"
     >
       <template #beforeAll>
         <transition name="slide-up">
@@ -544,6 +604,15 @@ export default {
         />
       </template>
     </MessageList>
+    <LearnThisModal
+      v-if="isLearnThisModalOpen"
+      :show="isLearnThisModalOpen"
+      :question-text="learnThisQuestion"
+      :answer-text="learnThisAnswer"
+      :assistant-id="learnThisAssistantId"
+      :assistant-name="learnThisAssistantName"
+      :on-close="closeLearnThisModal"
+    />
     <div
       class="flex relative flex-col"
       :class="{

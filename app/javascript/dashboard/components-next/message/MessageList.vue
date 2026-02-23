@@ -39,7 +39,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['retry']);
+const emit = defineEmits(['retry', 'learnThis']);
 
 const allMessages = computed(() => {
   return useCamelCase(props.messages, {
@@ -179,6 +179,7 @@ const getInReplyToMessage = parentMessage => {
         :current-user-id="currentUserId"
         data-clarity-mask="True"
         @retry="emit('retry', message)"
+        @learn-this="data => emit('learnThis', data)"
       />
     </template>
     <slot name="after" />

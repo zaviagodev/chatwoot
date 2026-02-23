@@ -179,6 +179,37 @@ RSpec.describe 'Api::V1::Accounts::Captain::AssistantResponses', type: :request 
       expect(json_response[:answer]).to eq('Test answer')
     end
 
+    it 'creates a new response if the user is an agent' do
+      expect do
+        post "/api/v1/accounts/#{account.id}/captain/assistant_responses",
+             params: valid_params,
+             headers: agent.create_new_auth_token,
+             as: :json
+      end.to change(Captain::AssistantResponse, :count).by(1)
+
+      expect(response).to have_http_status(:success)
+      expect(json_response[:status]).to eq('approved')
+    end
+
+    it 'forces approved status even if agent passes pending' do
+      params_with_pending = {
+        assistant_response: {
+          question: 'Test question?',
+          answer: 'Test answer',
+          assistant_id: assistant.id,
+          status: 'pending'
+        }
+      }
+
+      post "/api/v1/accounts/#{account.id}/captain/assistant_responses",
+           params: params_with_pending,
+           headers: agent.create_new_auth_token,
+           as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response[:status]).to eq('approved')
+    end
+
     context 'with invalid params' do
       let(:invalid_params) do
         {
@@ -223,6 +254,15 @@ RSpec.describe 'Api::V1::Accounts::Captain::AssistantResponses', type: :request 
       expect(json_response[:answer]).to eq('Updated answer')
     end
 
+    it 'returns unauthorized if the user is an agent' do
+      patch "/api/v1/accounts/#{account.id}/captain/assistant_responses/#{response_record.id}",
+            params: update_params,
+            headers: agent.create_new_auth_token,
+            as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
     context 'with invalid params' do
       let(:invalid_params) do
         {
@@ -255,6 +295,14 @@ RSpec.describe 'Api::V1::Accounts::Captain::AssistantResponses', type: :request 
       end.to change(Captain::AssistantResponse, :count).by(-1)
 
       expect(response).to have_http_status(:no_content)
+    end
+
+    it 'returns unauthorized if the user is an agent' do
+      delete "/api/v1/accounts/#{account.id}/captain/assistant_responses/#{response_record.id}",
+             headers: agent.create_new_auth_token,
+             as: :json
+
+      expect(response).to have_http_status(:unauthorized)
     end
 
     context 'with invalid id' do

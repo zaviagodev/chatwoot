@@ -44,7 +44,7 @@ export default {
       default: false,
     },
   },
-  emits: ['open', 'close', 'replyTo'],
+  emits: ['open', 'close', 'replyTo', 'learnThis'],
   setup() {
     const { getPlainText } = useMessageFormatter();
 
@@ -131,6 +131,14 @@ export default {
     },
     handleReplyTo() {
       this.$emit('replyTo', this.message);
+      this.handleClose();
+    },
+    handleLearnThis() {
+      this.$emit('learnThis', {
+        content: this.plainTextContent,
+        messageId: this.messageId,
+        conversationId: this.conversationId,
+      });
       this.handleClose();
     },
     openDeleteModal() {
@@ -242,6 +250,15 @@ export default {
           }"
           variant="icon"
           @click.stop="showCannedResponseModal"
+        />
+        <MenuItem
+          v-if="enabledOptions['learnThis']"
+          :option="{
+            icon: 'book',
+            label: $t('CONVERSATION.CONTEXT_MENU.LEARN_THIS'),
+          }"
+          variant="icon"
+          @click.stop="handleLearnThis"
         />
         <hr v-if="enabledOptions['delete']" />
         <MenuItem

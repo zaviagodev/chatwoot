@@ -95,7 +95,11 @@ class Api::V1::Accounts::Conversations::CopilotDraftsController < Api::V1::Accou
     draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: @conversation.id)
     draft_json = Redis::Alfred.get(draft_key)
 
-    return render_not_found_error('No copilot draft found') if draft_json.blank?
+    if draft_json.blank?
+      # Self-healing: clear stale copilot_draft_pending flag when Redis draft has expired
+      @conversation.clear_copilot_draft! if @conversation.additional_attributes&.dig('copilot_draft_pending')
+      return render_not_found_error('No copilot draft found')
+    end
 
     @draft = JSON.parse(draft_json, symbolize_names: true)
   end

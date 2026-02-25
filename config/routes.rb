@@ -77,7 +77,7 @@ Rails.application.routes.draw do
                   put :approve_enrichment
                 end
               end
-              resources :erp_proxy, only: [], controller: 'captain/erp_proxy' do
+              resources :erp_proxy, only: [], controller: 'erp_proxy' do
                 collection do
                   post :search_products
                   get :item_groups

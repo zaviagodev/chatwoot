@@ -771,6 +771,15 @@
         }
       }
     },
+    "PRODUCTS": {
+      "DELETE": {
+        "TITLE": "Remove product",
+        "DESCRIPTION": "This will remove the product from Captain's knowledge base. Captain will no longer be able to answer questions about this product.",
+        "CONFIRM": "Yes, remove",
+        "SUCCESS_MESSAGE": "Product removed from Captain's knowledge base",
+        "ERROR_MESSAGE": "There was an error removing the product, please try again."
+      }
+    },
     "CUSTOM_TOOLS": {
       "HEADER": "Tools",
       "ADD_NEW": "Create a new tool",

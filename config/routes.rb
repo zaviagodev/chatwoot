@@ -66,6 +66,25 @@ Rails.application.routes.draw do
               end
               resources :inboxes, only: [:index, :create, :update, :destroy], param: :inbox_id
               resources :scenarios
+              resources :products, only: [:index, :show, :create, :update, :destroy] do
+                collection do
+                  post :sync
+                  get :sync_status
+                  post :provision_tools
+                end
+                member do
+                  post :enrich
+                  put :approve_enrichment
+                end
+              end
+              resources :erp_proxy, only: [], controller: 'captain/erp_proxy' do
+                collection do
+                  post :search_products
+                  get :item_groups
+                  get :warehouses
+                  post :setup
+                end
+              end
             end
             resources :assistant_responses
             resources :bulk_actions, only: [:create]

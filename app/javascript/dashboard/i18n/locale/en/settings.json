@@ -313,6 +313,7 @@
     "CAPTAIN": "Captain",
     "CAPTAIN_ASSISTANTS": "Assistants",
     "CAPTAIN_DOCUMENTS": "Documents",
+    "CAPTAIN_PRODUCTS": "Products",
     "CAPTAIN_RESPONSES": "FAQs",
     "CAPTAIN_TOOLS": "Tools",
     "CAPTAIN_SCENARIOS": "Scenarios",
@@ -429,6 +430,91 @@
     "API": {
       "SUCCESS": "Captain settings updated successfully.",
       "ERROR": "Failed to update Captain settings. Please try again."
+    }
+  },
+  "CAPTAIN_PRODUCTS": {
+    "HEADER": "Products",
+    "ADD_NEW": "Add Products",
+    "SEARCH_PLACEHOLDER": "Search products...",
+    "EMPTY_STATE": {
+      "TITLE": "Teach Captain about your products",
+      "SUBTITLE": "Add products from your catalog so Captain can answer customer questions about pricing, availability, and details."
+    },
+    "CARD": {
+      "IN_STOCK": "In stock",
+      "OUT_OF_STOCK": "Out of stock",
+      "UNKNOWN_STOCK": "Stock unknown",
+      "SOURCE_AUTO": "Auto",
+      "SOURCE_AI": "AI",
+      "SOURCE_MANUAL": "Manual"
+    },
+    "OPTIONS": {
+      "VIEW_DESCRIPTION": "View description",
+      "EDIT_DESCRIPTION": "Edit description",
+      "AI_ENRICH": "AI Enrich",
+      "RESYNC": "Re-sync from catalog",
+      "REMOVE": "Remove product"
+    },
+    "ADD_DIALOG": {
+      "TITLE": "Add Products from Catalog",
+      "SEARCH_PLACEHOLDER": "Search your product catalog...",
+      "ADD_SELECTED": "Add Selected",
+      "ADDING": "Adding...",
+      "ALREADY_ADDED": "Already added",
+      "NO_RESULTS": "No products found",
+      "FILTER_ALL": "All categories",
+      "SELECTED_COUNT": "{count} selected"
+    },
+    "SETUP": {
+      "TITLE": "Connect your product catalog",
+      "DESCRIPTION": "Enter your ERPNext company name to get started.",
+      "COMPANY_LABEL": "Company name",
+      "WAREHOUSE_LABEL": "Warehouse",
+      "SAVE_BUTTON": "Save & Continue"
+    },
+    "TOAST": {
+      "ADDED": "Product added to Captain's knowledge base",
+      "ADDED_MULTIPLE": "{count} products added to Captain's knowledge base",
+      "REMOVED": "Product removed from Captain's knowledge base",
+      "UPDATED": "Product description updated",
+      "RESYNCED": "Product re-synced from catalog",
+      "SYNC_ERROR": "Failed to sync product. Please try again.",
+      "SYNC_SUCCESS": "Stock levels updated for {count} products",
+      "ADD_ERROR": "Failed to add product. Please try again.",
+      "SETUP_SUCCESS": "Product catalog connected successfully",
+      "ENRICHED": "AI-enhanced description applied",
+      "ENRICH_ERROR": "Failed to apply description. Please try again."
+    },
+    "INLINE_EDITOR": {
+      "NO_DESCRIPTION": "No description available.",
+      "EDIT": "Edit",
+      "CLOSE": "Close",
+      "CANCEL": "Cancel",
+      "SAVE": "Save"
+    },
+    "SYNC": {
+      "LAST_SYNCED": "Last synced {time}",
+      "SYNCING": "Syncing stock levels...",
+      "SYNC_NOW": "Sync stock levels now",
+      "ERROR_BANNER": "Stock sync has been failing. Check your ERPNext connection.",
+      "RETRY": "Retry now"
+    },
+    "AI_ENRICH": {
+      "GENERATING": "Generating AI description...",
+      "PREVIEW_TITLE": "AI-Enhanced Description",
+      "CURRENT_TITLE": "Current description (auto-generated)",
+      "USE_THIS": "Use This",
+      "EDIT_AND_USE": "Edit & Use",
+      "DISCARD": "Discard",
+      "ERROR": "Couldn't generate description. Try again or write one manually.",
+      "RETRY": "Retry",
+      "WRITE_MANUALLY": "Write manually"
+    },
+    "RESYNC_CONFIRM": "This will replace your custom description with auto-generated text. Continue?",
+    "REMOVE_CONFIRM": {
+      "TITLE": "Remove product",
+      "MESSAGE": "This will remove the product from Captain's knowledge base. Captain will no longer be able to answer questions about this product.",
+      "CONFIRM": "Yes, remove"
     }
   },
   "BILLING_SETTINGS": {

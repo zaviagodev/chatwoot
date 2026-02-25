@@ -21,6 +21,10 @@ if resource.documentable
       json.id resource.documentable.id
       json.email resource.documentable.email
       json.available_name resource.documentable.available_name
+    when 'Captain::Product'
+      json.id resource.documentable.id
+      json.item_code resource.documentable.item_code
+      json.item_name resource.documentable.item_name
     end
   end
 end

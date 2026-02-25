@@ -328,6 +328,14 @@ const menuItems = computed(() => {
           }),
         },
         {
+          name: 'Products',
+          label: t('SIDEBAR.CAPTAIN_PRODUCTS'),
+          activeOn: ['captain_assistants_products_index'],
+          to: accountScopedRoute('captain_assistants_index', {
+            navigationPath: 'captain_assistants_products_index',
+          }),
+        },
+        {
           name: 'Scenarios',
           label: t('SIDEBAR.CAPTAIN_SCENARIOS'),
           activeOn: ['captain_assistants_scenarios_index'],

@@ -7,5 +7,8 @@ module Enterprise::TriggerScheduledItemsJob
 
     # Triggers Account Sla jobs
     Sla::TriggerSlasForAccountsJob.perform_later
+
+    # Triggers Captain product stock sync
+    Captain::Products::StockSyncJob.perform_later
   end
 end

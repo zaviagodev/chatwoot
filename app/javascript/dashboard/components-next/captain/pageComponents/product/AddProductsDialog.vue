@@ -71,7 +71,8 @@ const searchProducts = async (page = 1) => {
       page,
       assistantId: props.assistantId,
     });
-    searchResults.value = data.products || data || [];
+    const items = data.products || data.data || data || [];
+    searchResults.value = Array.isArray(items) ? items : [];
   } catch {
     searchResults.value = [];
     useAlert(t('CAPTAIN_PRODUCTS.TOAST.SYNC_ERROR'));
@@ -89,7 +90,8 @@ const fetchItemGroups = async () => {
     const { data } = await CaptainErpProxy.getItemGroups({
       assistantId: props.assistantId,
     });
-    itemGroups.value = data.item_groups || data || [];
+    const groups = data.item_groups || data.data || data || [];
+    itemGroups.value = Array.isArray(groups) ? groups : [];
   } catch {
     itemGroups.value = [];
   }

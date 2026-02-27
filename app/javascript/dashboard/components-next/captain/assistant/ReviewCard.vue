@@ -1,11 +1,13 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useToggle } from '@vueuse/core';
 import { usePolicy } from 'dashboard/composables/usePolicy';
 
 import CardLayout from 'dashboard/components-next/CardLayout.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 
 const props = defineProps({
   id: { type: Number, required: true },
@@ -23,6 +25,8 @@ const emit = defineEmits(['action', 'select']);
 const { t } = useI18n();
 const { checkPermissions } = usePolicy();
 const isAdmin = computed(() => checkPermissions(['administrator']));
+
+const [showActionsDropdown, toggleDropdown] = useToggle();
 
 const displayName = computed(() => props.reviewerName || 'Anonymous');
 
@@ -45,16 +49,19 @@ const menuItems = computed(() => {
       label: t('CAPTAIN_REVIEWS.DRAWER.EDIT_TITLE'),
       icon: 'i-lucide-pencil',
       action: 'edit',
+      value: 'edit',
     },
     {
       label: t('CAPTAIN_REVIEWS.DELETE.CONFIRM'),
       icon: 'i-lucide-trash',
       action: 'delete',
+      value: 'delete',
     },
   ];
 });
 
-const handleMenuAction = action => {
+const handleMenuAction = ({ action }) => {
+  toggleDropdown(false);
   emit('action', { action, id: props.id });
 };
 </script>
@@ -138,18 +145,23 @@ const handleMenuAction = action => {
       </div>
 
       <!-- Three-dot menu -->
-      <DropdownMenu
-        v-if="isAdmin && menuItems.length"
-        :menu-items="menuItems"
-        class="shrink-0"
-        @action="handleMenuAction"
-      >
-        <template #trigger>
-          <button class="p-1 rounded hover:bg-n-slate-3 text-n-slate-9">
-            <span class="i-lucide-more-vertical text-base" />
-          </button>
-        </template>
-      </DropdownMenu>
+      <div v-if="isAdmin" class="relative shrink-0">
+        <Button
+          icon="i-lucide-ellipsis-vertical"
+          xs
+          faded
+          slate
+          size="xs"
+          class="rounded-md"
+          @click="toggleDropdown()"
+        />
+        <DropdownMenu
+          v-if="showActionsDropdown"
+          :menu-items="menuItems"
+          class="mt-1 right-0 top-full"
+          @action="handleMenuAction($event)"
+        />
+      </div>
     </div>
   </CardLayout>
 </template>

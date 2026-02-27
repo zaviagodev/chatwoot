@@ -12,7 +12,7 @@ class Captain::VisualIntentDetector
     return false if text.blank?
 
     normalized = text.downcase
-    VISUAL_KEYWORDS_EN.any? { |kw| normalized.match?(/\b#{Regexp.escape(kw)}\b/) } ||
+    VISUAL_KEYWORDS_EN.any? { |kw| normalized.match?(/\b#{Regexp.escape(kw)}/) } ||
       VISUAL_KEYWORDS_TH.any? { |kw| normalized.include?(kw) }
   end
 end

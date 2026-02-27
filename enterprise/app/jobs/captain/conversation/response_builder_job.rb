@@ -118,11 +118,52 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
 
   def create_messages
     validate_message_content!(@response['response'])
-    create_outgoing_message(@response['response'], agent_name: @response['agent_name'])
+
+    photo_blobs = resolve_photo_attachments
+    message = build_outgoing_message(@response['response'], agent_name: @response['agent_name'])
+    attach_photos(message, photo_blobs) if photo_blobs.any?
+    message.save!
   end
 
   def validate_message_content!(content)
     raise ArgumentError, 'Message content cannot be blank' if content.blank?
+  end
+
+  def resolve_photo_attachments
+    last_incoming = @conversation.messages.where(message_type: :incoming).last
+    return [] unless last_incoming
+    return [] unless Captain::VisualIntentDetector.detected?(last_incoming.content)
+
+    Captain::ImageAttachmentService
+      .new(assistant: @assistant)
+      .find_photo_blobs(last_incoming.content)
+  rescue StandardError => e
+    Rails.logger.warn "[Captain] Image attachment failed: #{e.message}"
+    [] # Graceful fallback - send text-only
+  end
+
+  def build_outgoing_message(message_content, agent_name: nil)
+    additional_attrs = {}
+    additional_attrs[:agent_name] = agent_name if agent_name.present?
+
+    @conversation.messages.build(
+      message_type: :outgoing,
+      account_id: account.id,
+      inbox_id: inbox.id,
+      sender: @assistant,
+      content: message_content,
+      additional_attributes: additional_attrs
+    )
+  end
+
+  def attach_photos(message, blobs)
+    blobs.each do |blob|
+      attachment = message.attachments.build(
+        account_id: account.id,
+        file_type: :image
+      )
+      attachment.file.attach(blob)
+    end
   end
 
   def create_outgoing_message(message_content, agent_name: nil)

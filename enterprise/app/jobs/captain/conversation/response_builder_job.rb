@@ -121,7 +121,7 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
 
     photo_blobs = resolve_photo_attachments
     message = build_outgoing_message(@response['response'], agent_name: @response['agent_name'])
-    attach_photos(message, photo_blobs) if photo_blobs.any?
+    safe_attach_photos(message, photo_blobs) if photo_blobs.any?
     message.save!
   end
 
@@ -156,6 +156,13 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     )
   end
 
+  def safe_attach_photos(message, blobs)
+    attach_photos(message, blobs)
+  rescue StandardError => e
+    Rails.logger.warn "[Captain] Photo attachment build failed, sending text-only: #{e.message}"
+    message.attachments.reset
+  end
+
   def attach_photos(message, blobs)
     blobs.each do |blob|
       attachment = message.attachments.build(
@@ -167,17 +174,9 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   end
 
   def create_outgoing_message(message_content, agent_name: nil)
-    additional_attrs = {}
-    additional_attrs[:agent_name] = agent_name if agent_name.present?
-
-    @conversation.messages.create!(
-      message_type: :outgoing,
-      account_id: account.id,
-      inbox_id: inbox.id,
-      sender: @assistant,
-      content: message_content,
-      additional_attributes: additional_attrs
-    )
+    message = build_outgoing_message(message_content, agent_name: agent_name)
+    message.save!
+    message
   end
 
   def store_and_broadcast_draft

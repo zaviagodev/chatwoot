@@ -40,7 +40,7 @@ class Captain::ImageAttachmentService
   end
 
   def collect_photo_blobs(review_responses)
-    review_ids = review_responses.map(&:documentable_id).compact.uniq
+    review_ids = review_responses.filter_map(&:documentable_id).uniq
     return [] if review_ids.empty?
 
     reviews = Captain::Review.where(id: review_ids).with_attached_photos
@@ -54,7 +54,7 @@ class Captain::ImageAttachmentService
                                   .search(query, account_id: @assistant.account_id)
     return [] if product_responses.empty?
 
-    product_ids = product_responses.map(&:documentable_id).compact.uniq
+    product_ids = product_responses.filter_map(&:documentable_id).uniq
     # Scope to @assistant to prevent cross-assistant data leakage
     reviews = @assistant.reviews.where(captain_product_id: product_ids).with_attached_photos
     reviews.flat_map { |r| r.photos.map(&:blob) }

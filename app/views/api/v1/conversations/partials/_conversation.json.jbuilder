@@ -67,7 +67,7 @@ json.priority conversation.priority
 json.waiting_since conversation.waiting_since.to_i.to_i
 json.sla_policy_id conversation.sla_policy_id
 json.conversation_type conversation.conversation_type
-if conversation.group?
+if conversation.conversation_type_group?
   json.line_group_id conversation.line_group_id
   json.group_name conversation.additional_attributes&.dig('group_name')
   json.group_icon_url conversation.additional_attributes&.dig('group_icon_url')

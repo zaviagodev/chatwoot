@@ -74,7 +74,7 @@ class Conversation < ApplicationRecord
 
   enum status: { open: 0, resolved: 1, pending: 2, snoozed: 3 }
   enum priority: { low: 0, medium: 1, high: 2, urgent: 3 }
-  enum conversation_type: { direct: 0, group: 1 }
+  enum conversation_type: { direct: 0, group: 1 }, _prefix: true
 
   scope :unassigned, -> { where(assignee_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil) }

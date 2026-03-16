@@ -24,7 +24,7 @@ class Line::SendOnLineService < Base::SendOnChannelService
 
   def reply_target_id
     conversation = message.conversation
-    if conversation.group? && conversation.line_group_id.present?
+    if conversation.conversation_type_group? && conversation.line_group_id.present?
       conversation.line_group_id
     else
       conversation.contact_inbox.source_id

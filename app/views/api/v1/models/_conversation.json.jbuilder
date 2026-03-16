@@ -8,7 +8,7 @@ if conversation.contact.present?
     json.id conversation.contact.id
     json.name conversation.contact.name
   end
-elsif conversation.group?
+elsif conversation.conversation_type_group?
   json.contact do
     json.id nil
     json.name conversation.additional_attributes&.dig('group_name') || 'Group'

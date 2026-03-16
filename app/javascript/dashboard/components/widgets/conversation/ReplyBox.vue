@@ -1184,6 +1184,7 @@ export default {
         }
         await this.$store.dispatch('approveCopilotDraft', this.conversationId);
         this.copilot.reset(false);
+        this.copilot.clearDraftHistory();
         return;
       }
       // Normal copilot flow (suggest a reply): load into main editor
@@ -1208,6 +1209,7 @@ export default {
           conversationId
         );
         this.copilot.reset(false);
+        this.copilot.clearDraftHistory();
 
         if (result?.success) {
           useAlert(rejectedMsg, {

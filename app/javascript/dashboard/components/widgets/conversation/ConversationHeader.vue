@@ -64,9 +64,27 @@ const isHMACVerified = computed(() => {
   return chatMetadata.value.hmac_verified;
 });
 
+const isGroupConversation = computed(
+  () => props.chat.conversation_type === 'group'
+);
+
 const currentContact = computed(() =>
   store.getters['contacts/getContact'](props.chat.meta.sender.id)
 );
+
+const headerName = computed(() => {
+  if (isGroupConversation.value) {
+    return props.chat.group_name || t('CONVERSATION.HEADER.GROUP_CHAT');
+  }
+  return currentContact.value.name;
+});
+
+const headerThumbnail = computed(() => {
+  if (isGroupConversation.value) {
+    return props.chat.group_icon_url || '';
+  }
+  return currentContact.value.thumbnail;
+});
 
 const isSnoozed = computed(
   () => currentChat.value.status === wootConstants.STATUS_TYPE.SNOOZED
@@ -106,10 +124,12 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
         class="ltr:mr-2 rtl:ml-2"
       />
       <Avatar
-        :name="currentContact.name"
-        :src="currentContact.thumbnail"
+        :name="headerName"
+        :src="headerThumbnail"
         :size="32"
-        :status="currentContact.availability_status"
+        :status="
+          isGroupConversation ? undefined : currentContact.availability_status
+        "
         hide-offline-status
         rounded-full
       />
@@ -117,10 +137,26 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
         class="flex flex-col items-start min-w-0 ml-2 overflow-hidden rtl:ml-0 rtl:mr-2"
       >
         <div class="flex flex-row items-center max-w-full gap-1 p-0 m-0">
+          <fluent-icon
+            v-if="isGroupConversation"
+            size="14"
+            class="text-n-slate-11 min-w-[14px] flex-shrink-0"
+            icon="people"
+          />
           <span
             class="text-sm font-medium truncate leading-tight text-n-slate-12"
           >
-            {{ currentContact.name }}
+            {{ headerName }}
+          </span>
+          <span
+            v-if="isGroupConversation && chat.group_member_count"
+            class="text-xs text-n-slate-10 flex-shrink-0"
+          >
+            {{
+              $t('CONVERSATION.SIDEBAR.GROUP_MEMBER_COUNT', {
+                count: chat.group_member_count,
+              })
+            }}
           </span>
           <fluent-icon
             v-if="!isHMACVerified"

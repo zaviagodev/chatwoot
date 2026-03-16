@@ -37,10 +37,26 @@ const cardMessagePreviewWithMetaRef = ref(null);
 
 const currentContact = computed(() => props.contact);
 
-const currentContactName = computed(() => currentContact.value?.name);
-const currentContactThumbnail = computed(() => currentContact.value?.thumbnail);
-const currentContactStatus = computed(
-  () => currentContact.value?.availabilityStatus
+const isGroupConversation = computed(
+  () => props.conversation?.conversation_type === 'group'
+);
+
+const currentContactName = computed(() => {
+  if (isGroupConversation.value) {
+    return props.conversation?.group_name || 'Group';
+  }
+  return currentContact.value?.name;
+});
+const currentContactThumbnail = computed(() => {
+  if (isGroupConversation.value) {
+    return props.conversation?.group_icon_url || '';
+  }
+  return currentContact.value?.thumbnail;
+});
+const currentContactStatus = computed(() =>
+  isGroupConversation.value
+    ? undefined
+    : currentContact.value?.availabilityStatus
 );
 
 const inbox = computed(() => props.stateInbox);
@@ -99,7 +115,14 @@ const onCardClick = e => {
     />
     <div class="flex flex-col w-full gap-1 min-w-0">
       <div class="flex items-center justify-between h-6 gap-2">
-        <h4 class="text-base font-medium truncate text-n-slate-12">
+        <h4
+          class="flex items-center gap-1 text-base font-medium truncate text-n-slate-12"
+        >
+          <Icon
+            v-if="isGroupConversation"
+            icon="i-lucide-users"
+            class="flex-shrink-0 text-n-slate-11 size-3.5"
+          />
           {{ currentContactName }}
         </h4>
         <div class="flex items-center gap-2">

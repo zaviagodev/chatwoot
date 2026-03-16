@@ -3,9 +3,16 @@
 json.id conversation.display_id
 json.uuid conversation.uuid
 json.created_at conversation.created_at.to_i
-json.contact do
-  json.id conversation.contact.id
-  json.name conversation.contact.name
+if conversation.contact.present?
+  json.contact do
+    json.id conversation.contact.id
+    json.name conversation.contact.name
+  end
+elsif conversation.group?
+  json.contact do
+    json.id nil
+    json.name conversation.additional_attributes&.dig('group_name') || 'Group'
+  end
 end
 json.inbox do
   json.id conversation.inbox.id

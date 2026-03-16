@@ -33,6 +33,7 @@ import customViews from './modules/customViews';
 import dashboardApps from './modules/dashboardApps';
 import draftMessages from './modules/draftMessages';
 import globalConfig from 'shared/store/globalConfig';
+import groupContacts from './modules/groupContacts';
 import inboxAssignableAgents from './modules/inboxAssignableAgents';
 import inboxes from './modules/inboxes';
 import inboxMembers from './modules/inboxMembers';
@@ -99,6 +100,7 @@ export default createStore({
     dashboardApps,
     draftMessages,
     globalConfig,
+    groupContacts,
     inboxAssignableAgents,
     inboxes,
     inboxMembers,

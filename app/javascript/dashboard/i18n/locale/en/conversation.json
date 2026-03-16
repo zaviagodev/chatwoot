@@ -96,6 +96,7 @@
       "SNOOZED_UNTIL_TOMORROW": "Snoozed until tomorrow",
       "SNOOZED_UNTIL_NEXT_WEEK": "Snoozed until next week",
       "SNOOZED_UNTIL_NEXT_REPLY": "Snoozed until next reply",
+      "GROUP_CHAT": "Group Chat",
       "SLA_STATUS": {
         "FRT": "FRT {status}",
         "NRT": "NRT {status}",
@@ -297,7 +298,12 @@
     },
     "SIDEBAR": {
       "CONTACT": "Contact",
-      "COPILOT": "Copilot"
+      "COPILOT": "Copilot",
+      "GROUP": "Group",
+      "GROUP_MEMBERS": "Group Members",
+      "GROUP_MEMBER_COUNT": "{count} members",
+      "LOADING_MEMBERS": "Loading members...",
+      "NO_MEMBERS": "No members found"
     },
     "VOICE_WIDGET": {
       "INCOMING_CALL": "Incoming call",

@@ -17,19 +17,163 @@ class Line::IncomingMessageService
 
   def parse_events
     params[:events].each do |event|
+      next unless supported_event?(event)
+
+      if member_event?(event)
+        handle_member_event(event)
+        next
+      end
+
       next unless event_type_message?(event)
 
-      get_line_contact_info(event)
-      next if @line_contact_info['userId'].blank?
+      source_type = event.dig('source', 'type')
 
-      set_contact
-      set_conversation
-
-      next unless message_created? event
-
-      attach_files event['message']
-      @message.save!
+      if source_type == 'group'
+        handle_group_message(event)
+      else
+        handle_direct_message(event)
+      end
     end
+  end
+
+  def handle_direct_message(event)
+    get_line_contact_info(event)
+    return if @line_contact_info['userId'].blank?
+
+    set_contact
+    set_conversation
+
+    return unless message_created?(event)
+
+    attach_files event['message']
+    @message.save!
+  end
+
+  def handle_group_message(event)
+    group_id = event.dig('source', 'groupId')
+    user_id = event.dig('source', 'userId')
+    return if group_id.blank? || user_id.blank?
+
+    get_line_contact_info(event)
+    return if @line_contact_info['userId'].blank?
+
+    set_contact
+    set_group_conversation(group_id)
+    ensure_conversation_contact
+
+    return unless message_created?(event)
+
+    attach_files event['message']
+    @message.save!
+  end
+
+  def handle_member_event(event)
+    group_id = event.dig('source', 'groupId')
+    return if group_id.blank?
+
+    conversation = find_group_conversation(group_id)
+    return unless conversation
+
+    event_type = event['type']
+    members = event.dig('joined', 'members') || event.dig('left', 'members') || []
+
+    members.each do |member|
+      user_id = member['userId']
+      next if user_id.blank?
+
+      if event_type == 'memberJoined'
+        handle_member_joined(conversation, user_id)
+      elsif event_type == 'memberLeft'
+        handle_member_left(conversation, user_id)
+      end
+    end
+  end
+
+  def handle_member_joined(conversation, user_id)
+    contact = find_or_create_contact_by_line_id(user_id)
+    ConversationContact.find_or_create_by!(conversation: conversation, contact: contact)
+    create_system_message(conversation, "#{contact.name} joined the group")
+  end
+
+  def handle_member_left(conversation, user_id)
+    contact_inbox = inbox.contact_inboxes.find_by(source_id: user_id)
+    return unless contact_inbox
+
+    conversation.conversation_contacts.where(contact: contact_inbox.contact).destroy_all
+    create_system_message(conversation, "#{contact_inbox.contact.name} left the group")
+  end
+
+  def create_system_message(conversation, content)
+    conversation.messages.create!(
+      account_id: inbox.account_id,
+      inbox_id: inbox.id,
+      message_type: :activity,
+      content: content
+    )
+  end
+
+  def find_or_create_contact_by_line_id(user_id)
+    contact_inbox = ::ContactInboxWithContactBuilder.new(
+      source_id: user_id,
+      inbox: inbox,
+      contact_attributes: fetch_line_profile(user_id)
+    ).perform
+    contact_inbox.contact
+  end
+
+  def fetch_line_profile(user_id)
+    profile = JSON.parse(inbox.channel.client.get_profile(user_id).body)
+    {
+      name: profile['displayName'],
+      avatar_url: profile['pictureUrl'],
+      additional_attributes: { social_line_user_id: user_id }
+    }
+  rescue StandardError
+    { name: user_id, additional_attributes: { social_line_user_id: user_id } }
+  end
+
+  def supported_event?(event)
+    event_type_message?(event) || member_event?(event)
+  end
+
+  def member_event?(event)
+    %w[memberJoined memberLeft].include?(event['type'])
+  end
+
+  def find_group_conversation(group_id)
+    account.conversations.where(inbox: inbox, line_group_id: group_id, conversation_type: :group).first
+  end
+
+  def set_group_conversation(group_id)
+    @conversation = find_group_conversation(group_id)
+    return if @conversation
+
+    group_info = fetch_group_summary(group_id)
+
+    @conversation = ::Conversation.create!(
+      account_id: inbox.account_id,
+      inbox_id: inbox.id,
+      conversation_type: :group,
+      line_group_id: group_id,
+      contact_id: @contact.id,
+      contact_inbox_id: @contact_inbox.id,
+      additional_attributes: {
+        group_name: group_info[:name],
+        group_icon_url: group_info[:icon_url]
+      }
+    )
+  end
+
+  def ensure_conversation_contact
+    ConversationContact.find_or_create_by!(conversation: @conversation, contact: @contact)
+  end
+
+  def fetch_group_summary(group_id)
+    response = inbox.channel.client.get_group_summary(group_id)
+    summary = JSON.parse(response.body)
+    { name: summary['groupName'], icon_url: summary['pictureUrl'] }
+  rescue StandardError
+    { name: "LINE Group #{group_id[0..7]}", icon_url: nil }
   end
 
   def message_created?(event)

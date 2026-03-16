@@ -6,7 +6,8 @@ class Line::SendOnLineService < Base::SendOnChannelService
   end
 
   def perform_reply
-    response = channel.client.push_message(message.conversation.contact_inbox.source_id, build_payload)
+    target_id = reply_target_id
+    response = channel.client.push_message(target_id, build_payload)
 
     return if response.blank?
 
@@ -18,6 +19,15 @@ class Line::SendOnLineService < Base::SendOnChannelService
     else
       # If the request is not successful, update the message status to failed and save the external error
       Messages::StatusUpdateService.new(message, 'failed', external_error(parsed_json)).perform
+    end
+  end
+
+  def reply_target_id
+    conversation = message.conversation
+    if conversation.group? && conversation.line_group_id.present?
+      conversation.line_group_id
+    else
+      conversation.contact_inbox.source_id
     end
   end
 

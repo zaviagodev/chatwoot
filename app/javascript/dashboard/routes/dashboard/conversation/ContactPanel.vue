@@ -18,6 +18,8 @@ import ContactNotes from './contact/ContactNotes.vue';
 import ConversationInfo from './ConversationInfo.vue';
 import CustomAttributes from './customAttributes/CustomAttributes.vue';
 import Draggable from 'vuedraggable';
+import GroupInfoPanel from './GroupInfoPanel.vue';
+import GroupMemberList from './GroupMemberList.vue';
 import MacrosList from './Macros/List.vue';
 import ShopifyOrdersList from 'dashboard/components/widgets/conversation/ShopifyOrdersList.vue';
 import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader.vue';
@@ -87,6 +89,9 @@ const conversationAdditionalAttributes = computed(
 );
 
 const channelType = computed(() => currentChat.value.meta?.channel);
+const isGroupConversation = computed(
+  () => currentChat.value?.conversation_type === 'group'
+);
 
 const contactGetter = useMapGetter('contacts/getContact');
 const contactId = computed(() => currentChat.value.meta?.sender?.id);
@@ -133,10 +138,15 @@ onMounted(() => {
 <template>
   <div class="w-full">
     <SidebarActionsHeader
-      :title="$t('CONVERSATION.SIDEBAR.CONTACT')"
+      :title="
+        isGroupConversation
+          ? $t('CONVERSATION.SIDEBAR.GROUP')
+          : $t('CONVERSATION.SIDEBAR.CONTACT')
+      "
       @close="closeContactPanel"
     />
-    <ContactInfo :contact="contact" :channel-type="channelType" />
+    <GroupInfoPanel v-if="isGroupConversation" :conversation="currentChat" />
+    <ContactInfo v-else :contact="contact" :channel-type="channelType" />
     <div class="px-2 pb-8 list-group">
       <Draggable
         :list="conversationSidebarItems"
@@ -171,6 +181,18 @@ onMounted(() => {
             class="conversation--actions"
           >
             <AccordionItem
+              v-if="isGroupConversation"
+              :title="$t('CONVERSATION.SIDEBAR.GROUP_MEMBERS')"
+              :is-open="isContactSidebarItemOpen('is_conv_participants_open')"
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_conv_participants_open', value)
+              "
+            >
+              <GroupMemberList :conversation-id="conversationId" />
+            </AccordionItem>
+            <AccordionItem
+              v-else
               :title="$t('CONVERSATION_PARTICIPANTS.SIDEBAR_TITLE')"
               :is-open="isContactSidebarItemOpen('is_conv_participants_open')"
               @toggle="

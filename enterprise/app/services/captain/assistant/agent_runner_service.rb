@@ -106,14 +106,17 @@ class Captain::Assistant::AgentRunnerService
     # ai-agents gem returns response_schema output as a JSON string, not a Hash.
     # Parse it so downstream code can access response['response'] correctly.
     if output.is_a?(String)
-      parsed = begin; JSON.parse(output); rescue JSON::ParserError; nil; end
+      cleaned = output.strip
+      parsed = begin; JSON.parse(cleaned); rescue JSON::ParserError; nil; end
       return parsed.with_indifferent_access if parsed.is_a?(Hash)
 
-      # LLM sometimes returns multiple JSON objects concatenated with newlines.
-      # Try parsing the first line as a standalone JSON object.
-      first_line = output.split("\n").first&.strip
-      if first_line && first_line != output.strip
-        parsed = begin; JSON.parse(first_line); rescue JSON::ParserError; nil; end
+      # LLM sometimes returns multiple JSON objects concatenated with newlines,
+      # or output with leading blank lines. Try each non-empty line as JSON.
+      cleaned.split("\n").each do |line|
+        line = line.strip
+        next if line.empty?
+
+        parsed = begin; JSON.parse(line); rescue JSON::ParserError; nil; end
         return parsed.with_indifferent_access if parsed.is_a?(Hash)
       end
     end

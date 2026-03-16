@@ -224,7 +224,7 @@ const handleDeleteConfirm = async () => {
   }
 };
 
-// --- Re-sync from ERPNext ---
+// --- Re-sync from Workspace ---
 const applyResyncData = (data, keepLocalDescription = false) => {
   const detail = data.detail;
   itemName.value = detail.item_name || itemName.value;

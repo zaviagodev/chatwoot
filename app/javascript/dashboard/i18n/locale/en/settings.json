@@ -439,7 +439,7 @@
     "EMPTY_STATE": {
       "TITLE": "Add products for Captain to know about",
       "SUBTITLE": "Captain will use product details to answer customer questions accurately.",
-      "ADD_FROM_ERP": "Add from ERPNext",
+      "ADD_FROM_ERP": "Add from Workspace",
       "ADD_MANUALLY": "Add manually"
     },
     "CARD": {
@@ -470,7 +470,7 @@
     },
     "SETUP": {
       "TITLE": "Connect your product catalog",
-      "DESCRIPTION": "Enter your ERPNext company name to get started.",
+      "DESCRIPTION": "Enter your company name to get started.",
       "COMPANY_LABEL": "Company name",
       "WAREHOUSE_LABEL": "Warehouse",
       "SAVE_BUTTON": "Save & Continue"
@@ -507,7 +507,7 @@
       "LAST_SYNCED": "Last synced {time}",
       "SYNCING": "Syncing stock levels...",
       "SYNC_NOW": "Sync stock levels now",
-      "ERROR_BANNER": "Stock sync has been failing. Check your ERPNext connection.",
+      "ERROR_BANNER": "Stock sync has been failing. Check your Workspace connection.",
       "RETRY": "Retry now"
     },
     "AI_ENRICH": {
@@ -535,11 +535,11 @@
       "FILTER_ALL": "All",
       "FILTER_IN_STOCK": "In stock",
       "FILTER_OUT_OF_STOCK": "Out of stock",
-      "FILTER_ERP": "ERPNext",
+      "FILTER_ERP": "Workspace",
       "FILTER_MANUAL": "Manual",
       "PRODUCT_COUNT": "{count} products",
       "ADD_PRODUCT": "Add product",
-      "ADD_FROM_ERP": "Add from ERPNext",
+      "ADD_FROM_ERP": "Add from Workspace",
       "ADD_MANUALLY": "Add manually"
     },
     "RESYNC_CONFIRM": "This will replace your custom description with auto-generated text. Continue?",
@@ -627,8 +627,8 @@
       "ADD_SPEC": "Add specification",
       "SPEC_KEY_PLACEHOLDER": "e.g., Material",
       "SPEC_VALUE_PLACEHOLDER": "e.g., 100% Cotton",
-      "SOURCE_ERP": "Synced from ERPNext",
-      "SOURCE_ERP_INFO": "Edits here won't change your ERPNext data.",
+      "SOURCE_ERP": "Synced from Workspace",
+      "SOURCE_ERP_INFO": "Edits here won't change your Workspace data.",
       "SOURCE_MANUAL": "Added manually",
       "SAVE": "Save product",
       "SAVE_CHANGES": "Save changes",
@@ -646,14 +646,14 @@
       "TOAST_CREATE_ERROR": "Failed to save product. Please try again.",
       "TOAST_UPDATE_ERROR": "Failed to update product. Please try again.",
       "TOAST_DELETE_ERROR": "Failed to delete product. Please try again.",
-      "RESYNC": "Re-sync from ERPNext",
+      "RESYNC": "Re-sync from Workspace",
       "RESYNCING": "Syncing...",
-      "RESYNC_SUCCESS": "Product updated from ERPNext",
-      "RESYNC_ERROR": "Failed to sync from ERPNext",
+      "RESYNC_SUCCESS": "Product updated from Workspace",
+      "RESYNC_ERROR": "Failed to sync from Workspace",
       "RESYNC_CONFLICT_TITLE": "Local changes detected",
-      "RESYNC_CONFLICT_MESSAGE": "This product's description has been edited locally. Re-syncing will replace it with the ERPNext description.",
+      "RESYNC_CONFLICT_MESSAGE": "This product's description has been edited locally. Re-syncing will replace it with the Workspace description.",
       "RESYNC_KEEP_LOCAL": "Keep local description",
-      "RESYNC_REPLACE": "Replace with ERPNext",
+      "RESYNC_REPLACE": "Replace with Workspace",
       "SECTION_CAPTAIN_PREVIEW": "What Captain sees",
       "CAPTAIN_PREVIEW_EMPTY": "Save to generate preview.",
       "ERRORS": {

@@ -98,7 +98,7 @@ const handleAddClick = () => {
       {{ t('CAPTAIN_PRODUCTS.TOOLBAR.PRODUCT_COUNT', { count: totalCount }) }}
     </span>
 
-    <!-- Add product button (dropdown if ERP, direct if manual-only) -->
+    <!-- Add product button with dropdown -->
     <div
       v-on-clickaway="() => toggleAddDropdown(false)"
       class="relative shrink-0"

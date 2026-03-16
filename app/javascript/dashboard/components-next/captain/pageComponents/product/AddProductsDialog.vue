@@ -136,7 +136,7 @@ const handleAddSelected = async () => {
     selectedItems.value.has(item.item_code)
   );
 
-  // Enrich all items with full detail from ERPNext (stock, specs, variants)
+  // Enrich all items with full detail from Workspace (stock, specs, variants)
   const enrichedItems = await Promise.all(itemsToAdd.map(enrichWithDetail));
 
   const results = await Promise.allSettled(

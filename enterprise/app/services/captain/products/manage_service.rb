@@ -39,6 +39,8 @@ class Captain::Products::ManageService
   # Uses fetch() with product fallback instead of || operator to preserve falsy values
   # like price=0 or stock_qty=0.
   def update(product, product_data, reset_source: false)
+    new_variants = product_data.key?(:variants) ? merge_variants(product.variants, product_data[:variants]) : product.variants
+
     attrs = {
       item_name: product_data.fetch(:item_name, product.item_name),
       description: product_data.fetch(:description, product.description),
@@ -48,7 +50,7 @@ class Captain::Products::ManageService
       stock_status: derive_stock_status(product_data.fetch(:stock_qty, product.stock_qty)),
       item_group: product_data.fetch(:item_group, product.item_group),
       image_url: product_data.fetch(:image, product.image_url),
-      variants: product_data.fetch(:variants, product.variants),
+      variants: new_variants,
       specs: product_data.fetch(:specs, product.specs)
     }
 
@@ -110,5 +112,31 @@ class Captain::Products::ManageService
     return 'unknown' if qty.nil?
 
     qty.to_f > 0 ? 'in_stock' : 'out_of_stock'
+  end
+
+  # Merge new ERP variants with existing Captain state.
+  # Preserves enabled, price_override, description_override from existing data.
+  # New variants from ERP default to enabled: true.
+  def merge_variants(existing, incoming)
+    return incoming if existing.blank?
+    return existing if incoming.blank?
+
+    existing_map = existing.index_by { |v| v['item_code'] || v[:item_code] }
+
+    incoming.map do |new_v|
+      code = new_v['item_code'] || new_v[:item_code]
+      old_v = existing_map[code]
+
+      if old_v
+        enabled = old_v.key?('enabled') ? old_v['enabled'] : (old_v.key?(:enabled) ? old_v[:enabled] : true)
+        new_v.merge(
+          'enabled' => enabled,
+          'price_override' => old_v['price_override'] || old_v[:price_override],
+          'description_override' => old_v['description_override'] || old_v[:description_override]
+        )
+      else
+        new_v.merge('enabled' => true)
+      end
+    end
   end
 end

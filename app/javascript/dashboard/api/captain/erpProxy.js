@@ -14,12 +14,55 @@ class CaptainErpProxy extends ApiClient {
     });
   }
 
+  getProductDetail({ assistantId, itemCode } = {}) {
+    return axios.post(`${this.url}/${assistantId}/erp_proxy/product_detail`, {
+      item_code: itemCode,
+    });
+  }
+
   getItemGroups({ assistantId } = {}) {
     return axios.get(`${this.url}/${assistantId}/erp_proxy/item_groups`);
   }
 
   getWarehouses({ assistantId } = {}) {
     return axios.get(`${this.url}/${assistantId}/erp_proxy/warehouses`);
+  }
+
+  createSharedCheckout({
+    assistantId,
+    items,
+    customerEmail,
+    addressName,
+    addressData,
+    lineUserId,
+    registerCustomer,
+  } = {}) {
+    return axios.post(
+      `${this.url}/${assistantId}/erp_proxy/create_shared_checkout`,
+      {
+        items,
+        customer_email: customerEmail,
+        address_name: addressName,
+        address_data: addressData,
+        line_user_id: lineUserId,
+        register_customer: registerCustomer,
+      }
+    );
+  }
+
+  searchThaiAddress({ assistantId, query } = {}) {
+    return axios.post(
+      `${this.url}/${assistantId}/erp_proxy/search_thai_address`,
+      { query }
+    );
+  }
+
+  lookupLineCustomer({ assistantId, lineUserId, signal } = {}) {
+    return axios.post(
+      `${this.url}/${assistantId}/erp_proxy/lookup_line_customer`,
+      { line_user_id: lineUserId },
+      signal ? { signal } : {}
+    );
   }
 
   setup({ assistantId, erpCompany, erpWarehouse }) {

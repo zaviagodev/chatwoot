@@ -254,9 +254,19 @@ export function useCopilotReply() {
   /**
    * Sends a follow-up message to refine the current generated content.
    * @param {string} message - The follow-up message from the user
+   * @param {string} [editedContent] - The user-edited draft content (if modified in editor)
    */
-  async function sendFollowUp(message) {
+  async function sendFollowUp(message, editedContent) {
     if (!followUpContext.value || !message.trim()) return;
+
+    // If user edited the draft, update followUpContext so the LLM
+    // refines from the edited version, not the original generation.
+    if (editedContent && editedContent !== generatedContent.value) {
+      followUpContext.value = {
+        ...followUpContext.value,
+        last_response: editedContent,
+      };
+    }
 
     // Push current draft to history before generating a refinement
     if (generatedContent.value) {
@@ -337,6 +347,11 @@ export function useCopilotReply() {
    * @param {string} content - The draft content to display
    */
   function loadDraft(content) {
+    // Push existing draft to history before loading new one
+    // so the user can browse previous drafts with ◀ ▶ arrows
+    if (generatedContent.value) {
+      pushToHistory(generatedContent.value);
+    }
     reset(false);
     generatedContent.value = content;
     showEditor.value = true;

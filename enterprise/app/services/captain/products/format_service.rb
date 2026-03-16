@@ -52,8 +52,33 @@ class Captain::Products::FormatService
     variants = @product.variants || []
     return if variants.empty?
 
-    names = variants.first(10).map { |v| v['item_name'] || v[:item_name] }.compact
-    lines << "Variants: #{names.join(', ')}" if names.any?
+    enabled = variants.select { |v| v['enabled'] != false && v[:enabled] != false }
+    disabled = variants.reject { |v| v['enabled'] != false && v[:enabled] != false }
+
+    lines << ''
+    lines << "Variants (#{enabled.length} of #{variants.length} enabled):"
+
+    enabled.each do |v|
+      name = v['item_name'] || v[:item_name] || 'Unknown'
+      price = v['price_override'] || v[:price_override] || v['price'] || v[:price]
+      qty = (v['stock_qty'] || v[:stock_qty] || 0).to_f
+      attrs = (v['attributes'] || v[:attributes] || [])
+        .map { |a| "#{a['attribute'] || a[:attribute]}: #{a['value'] || a[:value]}" }
+
+      price_str = price.to_f > 0 ? "#{@product.currency} #{format_price(price)}" : ''
+      price_str += ' (custom)' if v['price_override'] || v[:price_override]
+      stock_str = qty > 0 ? "In stock (#{qty.to_i})" : 'Out of stock'
+
+      parts = [name, price_str, stock_str].reject(&:blank?)
+      lines << "  - #{parts.join(' | ')}"
+      lines << "    #{attrs.join(', ')}" if attrs.any?
+    end
+
+    if disabled.any?
+      names = disabled.map { |v| v['item_name'] || v[:item_name] }.compact.first(10)
+      lines << ''
+      lines << "(#{disabled.length} variants disabled: #{names.join(', ')})"
+    end
   end
 
   def format_specs(lines)

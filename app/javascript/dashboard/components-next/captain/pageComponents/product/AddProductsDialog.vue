@@ -101,6 +101,33 @@ const handleFilterChange = () => {
   searchProducts();
 };
 
+// Fetch full product detail for ALL selected items (not just variant items).
+// search_products only returns name/price/category — product_detail adds
+// stock_qty, specs, variants, formatted_text, and long_description.
+const enrichWithDetail = async item => {
+  try {
+    const { data } = await CaptainErpProxy.getProductDetail({
+      assistantId: props.assistantId,
+      itemCode: item.item_code,
+    });
+    const detail = data.data || data;
+    return {
+      ...item,
+      description:
+        detail.long_description || detail.description || item.description,
+      variants: detail.variants || [],
+      specs: detail.specs || item.specs || [],
+      formatted_text: data.formatted_text || item.formatted_text,
+      stock_qty: detail.stock_qty ?? item.stock_qty,
+      price: detail.price ?? item.price,
+      image: detail.image || item.image,
+      currency: detail.currency || item.currency,
+    };
+  } catch {
+    return item;
+  }
+};
+
 const handleAddSelected = async () => {
   if (selectedCount.value === 0) return;
   isAdding.value = true;
@@ -109,8 +136,11 @@ const handleAddSelected = async () => {
     selectedItems.value.has(item.item_code)
   );
 
+  // Enrich all items with full detail from ERPNext (stock, specs, variants)
+  const enrichedItems = await Promise.all(itemsToAdd.map(enrichWithDetail));
+
   const results = await Promise.allSettled(
-    itemsToAdd.map(item =>
+    enrichedItems.map(item =>
       store.dispatch('captainProducts/create', {
         assistantId: props.assistantId,
         item_code: item.item_code,

@@ -1,0 +1,50 @@
+{
+  "CARD_DESIGNS": {
+    "HEADER": {
+      "TITLE": "Card Designs",
+      "DESCRIPTION": "Design branded LINE card templates for use in chat conversations."
+    },
+    "NEW_DESIGN": "New Design",
+    "EDIT_DESIGN": "Edit: {name}",
+    "UNTITLED": "Untitled",
+    "BREADCRUMB_ROOT": "Card Designs",
+    "DESIGN_NAME_LABEL": "Design Name",
+    "DESIGN_NAME_PLACEHOLDER": "My Brand Card",
+    "SECTIONS_HEADER": "Sections",
+    "COLORS_HEADER": "Colors",
+    "REQUIRED_HINT": "(required)",
+    "PREVIEW_SUBTITLE": "This is how your card appears on LINE",
+    "MOVE_UP": "Move up",
+    "MOVE_DOWN": "Move down",
+    "SAVE_DESIGN": "Save Design",
+    "CANCEL": "Cancel",
+    "SAVED": "Card design saved",
+    "SAVE_FAILED": "Failed to save design",
+    "ENTER_NAME": "Please enter a design name",
+    "CARD": {
+      "EDIT_COPY": "Edit (Copy)",
+      "EDIT": "Edit",
+      "DUPLICATE": "Duplicate",
+      "SET_AS_DEFAULT": "Set as Default",
+      "DELETE": "Delete",
+      "BUILTIN_BADGE": "Built-in",
+      "SEND_COUNT": "{count} sends",
+      "SEND_COUNT_ONE": "1 send"
+    },
+    "DELETE_MODAL": {
+      "TITLE": "Delete Card Design",
+      "MESSAGE": "Delete '{name}'? This cannot be undone. {count} messages were sent with this design.",
+      "CONFIRM": "Yes, delete",
+      "REJECT": "No, keep it"
+    },
+    "LOADING": "Loading card designs...",
+    "DELETED": "Card design deleted",
+    "DELETE_FAILED": "Failed to delete",
+    "DUPLICATED": "Duplicated: {name}",
+    "DUPLICATE_FAILED": "Failed to duplicate",
+    "CREATED_COPY": "Created copy: {name}",
+    "COPY_FAILED": "Failed to create copy",
+    "SET_DEFAULT": "{name} set as default",
+    "SET_DEFAULT_FAILED": "Failed to set default"
+  }
+}

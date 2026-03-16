@@ -40,6 +40,7 @@ import LocationBubble from './bubbles/Location.vue';
 import CSATBubble from './bubbles/CSAT.vue';
 import FormBubble from './bubbles/Form.vue';
 import VoiceCallBubble from './bubbles/VoiceCall.vue';
+import ProductCardBubble from './bubbles/ProductCard.vue';
 
 import MessageError from './MessageError.vue';
 import ContextMenu from 'dashboard/modules/conversations/components/MessageContextMenu.vue';
@@ -297,6 +298,13 @@ const componentToRender = computed(() => {
     return VoiceCallBubble;
   }
 
+  if (
+    props.contentType === CONTENT_TYPES.CARDS &&
+    (props.contentAttributes?.product || props.contentAttributes?.products)
+  ) {
+    return ProductCardBubble;
+  }
+
   if (props.contentType === CONTENT_TYPES.INCOMING_EMAIL) {
     return EmailBubble;
   }
@@ -396,13 +404,15 @@ const shouldRenderMessage = computed(() => {
   const isUnsupported = props.contentAttributes?.isUnsupported;
   const isAnIntegrationMessage =
     props.contentType === CONTENT_TYPES.INTEGRATIONS;
+  const isCardsContentType = props.contentType === CONTENT_TYPES.CARDS;
 
   return (
     hasAttachments ||
     props.content ||
     isEmailContentType ||
     isUnsupported ||
-    isAnIntegrationMessage
+    isAnIntegrationMessage ||
+    isCardsContentType
   );
 });
 

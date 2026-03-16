@@ -183,6 +183,7 @@ function createDraftEditorView() {
     },
   });
   editedContent.value = props.generatedContent;
+  emit('update:editedContent', editedContent.value);
 }
 
 function resetDraftToOriginal() {

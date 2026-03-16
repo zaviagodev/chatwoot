@@ -99,6 +99,7 @@ class Account < ApplicationRecord
   has_many :macros, dependent: :destroy_async
   has_many :campaigns, dependent: :destroy_async
   has_many :canned_responses, dependent: :destroy_async
+  has_many :card_designs, dependent: :destroy_async
   has_many :categories, dependent: :destroy_async, class_name: '::Category'
   has_many :contacts, dependent: :destroy_async
   has_many :conversations, dependent: :destroy_async
@@ -141,6 +142,7 @@ class Account < ApplicationRecord
 
   before_validation :validate_limit_keys
   after_create_commit :notify_creation
+  after_create_commit :seed_card_designs
   after_destroy :remove_account_sequences
 
   def agents
@@ -208,6 +210,10 @@ class Account < ApplicationRecord
 
   def validate_limit_keys
     # method overridden in enterprise module
+  end
+
+  def seed_card_designs
+    CardDesign.seed_builtin_designs_for(self)
   end
 
   def remove_account_sequences

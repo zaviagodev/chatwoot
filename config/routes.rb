@@ -66,6 +66,12 @@ Rails.application.routes.draw do
               end
               resources :inboxes, only: [:index, :create, :update, :destroy], param: :inbox_id
               resources :scenarios
+              resources :reviews do
+                collection do
+                  get :distinct_categories
+                  delete :bulk_destroy
+                end
+              end
               resources :products, only: [:index, :show, :create, :update, :destroy] do
                 collection do
                   post :sync
@@ -80,9 +86,13 @@ Rails.application.routes.draw do
               resources :erp_proxy, only: [], controller: 'erp_proxy' do
                 collection do
                   post :search_products
+                  post :product_detail
                   get :item_groups
                   get :warehouses
                   post :setup
+                  post :create_shared_checkout
+                  post :lookup_line_customer
+                  post :search_thai_address
                 end
               end
             end
@@ -122,6 +132,12 @@ Rails.application.routes.draw do
             end
           end
           resources :canned_responses, only: [:index, :create, :update, :destroy]
+          resources :card_designs, only: [:index, :show, :create, :update, :destroy] do
+            member do
+              post :set_default
+              post :duplicate
+            end
+          end
           resources :automation_rules, only: [:index, :create, :show, :update, :destroy] do
             post :clone
           end

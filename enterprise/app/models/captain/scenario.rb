@@ -56,7 +56,9 @@ class Captain::Scenario < ApplicationRecord
   private
 
   def agent_name
-    "#{title} Agent".parameterize(separator: '_')
+    # Use id-based key to avoid Ruby's parameterize stripping non-ASCII characters
+    # (Thai, CJK, Arabic titles produce empty strings with parameterize)
+    "scenario_#{id}"
   end
 
   def agent_tools

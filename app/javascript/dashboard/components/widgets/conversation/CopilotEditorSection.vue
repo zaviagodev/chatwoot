@@ -66,7 +66,7 @@ const clearEditorSelection = () => {
 };
 
 const onSend = () => {
-  emit('send', copilotEditorContent.value);
+  emit('send', copilotEditorContent.value, editedDraftContent.value);
   copilotEditorContent.value = '';
 };
 </script>

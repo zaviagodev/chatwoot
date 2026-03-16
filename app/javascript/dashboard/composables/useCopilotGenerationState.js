@@ -112,8 +112,8 @@ export function useCopilotGenerationState() {
   function onIncomingMessage() {
     const chat = currentChat.value;
     if (!chat?.id) return;
-    // G11: Only trigger for conversations in copilot draft mode
-    if (chat.additional_attributes?.copilot_mode !== 'draft') return;
+    // G11: Trigger for any captain-enabled conversation (draft or auto_send)
+    if (chat.additional_attributes?.copilot_mode === 'off') return;
     // G4: Don't re-trigger if already tracking generation
     if (state.value === 'debouncing' || state.value === 'generating') return;
 
@@ -186,6 +186,11 @@ export function useCopilotGenerationState() {
       // G16: message_type === 0 filters out outgoing (1) and activity (2)
       if (lastMsg?.message_type === 0 && !lastMsg.private) {
         onIncomingMessage();
+      }
+      // Auto-send mode: Captain creates an outgoing message instead of a draft.
+      // Detect Captain's reply (message_type 1 = outgoing) and reset animation.
+      if (lastMsg?.message_type === 1 && state.value === 'generating') {
+        onDraftReceived();
       }
     }
   );

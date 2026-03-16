@@ -336,6 +336,14 @@ const menuItems = computed(() => {
           }),
         },
         {
+          name: 'Reviews',
+          label: t('SIDEBAR.CAPTAIN_REVIEWS'),
+          activeOn: ['captain_assistants_reviews_index'],
+          to: accountScopedRoute('captain_assistants_index', {
+            navigationPath: 'captain_assistants_reviews_index',
+          }),
+        },
+        {
           name: 'Scenarios',
           label: t('SIDEBAR.CAPTAIN_SCENARIOS'),
           activeOn: ['captain_assistants_scenarios_index'],
@@ -639,6 +647,17 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.CANNED_RESPONSES'),
           icon: 'i-lucide-message-square-quote',
           to: accountScopedRoute('canned_list'),
+        },
+        {
+          name: 'Settings Card Designs',
+          label: 'Card Designs',
+          icon: 'i-lucide-layout-template',
+          to: accountScopedRoute('card_designs_list'),
+          activeOn: [
+            'card_designs_list',
+            'card_designs_new',
+            'card_designs_edit',
+          ],
         },
         {
           name: 'Settings Integrations',

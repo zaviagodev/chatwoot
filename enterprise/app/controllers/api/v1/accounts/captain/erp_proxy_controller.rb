@@ -13,6 +13,11 @@ class Api::V1::Accounts::Captain::ErpProxyController < Api::V1::Accounts::BaseCo
     render_result(result)
   end
 
+  def product_detail
+    result = erp_client.get_product_detail(item_code: params[:item_code])
+    render_result(result)
+  end
+
   def item_groups
     result = erp_client.get_item_groups
     render_result(result)
@@ -20,6 +25,30 @@ class Api::V1::Accounts::Captain::ErpProxyController < Api::V1::Accounts::BaseCo
 
   def warehouses
     result = erp_client.get_warehouses
+    render_result(result)
+  end
+
+  def create_shared_checkout
+    result = erp_client.create_shared_checkout(
+      items: params[:items],
+      customer_email: params[:customer_email],
+      address_name: params[:address_name],
+      address_data: params[:address_data],
+      line_user_id: params[:line_user_id],
+      register_customer: params[:register_customer]
+    )
+    render_result(result)
+  end
+
+  def lookup_line_customer
+    result = erp_client.lookup_line_customer(
+      line_user_id: params[:line_user_id]
+    )
+    render_result(result)
+  end
+
+  def search_thai_address
+    result = erp_client.search_thai_address(query: params[:query])
     render_result(result)
   end
 

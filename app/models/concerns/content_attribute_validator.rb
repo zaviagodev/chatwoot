@@ -11,9 +11,12 @@ class ContentAttributeValidator < ActiveModel::Validator
       validate_items!(record)
       validate_item_attributes!(record, ALLOWED_SELECT_ITEM_KEYS)
     when 'cards'
-      validate_items!(record)
-      validate_item_attributes!(record, ALLOWED_CARD_ITEM_KEYS)
-      validate_item_actions!(record)
+      unless record.content_attributes&.key?('product') || record.content_attributes&.key?(:product) ||
+             record.content_attributes&.key?('products') || record.content_attributes&.key?(:products)
+        validate_items!(record)
+        validate_item_attributes!(record, ALLOWED_CARD_ITEM_KEYS)
+        validate_item_actions!(record)
+      end
     when 'form'
       validate_items!(record)
       validate_item_attributes!(record, ALLOWED_FORM_ITEM_KEYS)

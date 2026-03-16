@@ -52,6 +52,18 @@ class Captain::ProductPolicy < ApplicationPolicy
     true
   end
 
+  def create_shared_checkout?
+    true
+  end
+
+  def lookup_line_customer?
+    true
+  end
+
+  def search_thai_address?
+    true
+  end
+
   def setup?
     @account_user.administrator?
   end

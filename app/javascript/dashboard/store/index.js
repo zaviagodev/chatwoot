@@ -13,6 +13,7 @@ import automations from './modules/automations';
 import bulkActions from './modules/bulkActions';
 import campaigns from './modules/campaigns';
 import cannedResponse from './modules/cannedResponse';
+import cardDesigns from './modules/cardDesigns';
 import categories from './modules/helpCenterCategories';
 import contactConversations from './modules/contactConversations';
 import contactLabels from './modules/contactLabels';
@@ -59,6 +60,7 @@ import captainScenarios from './captain/scenarios';
 import captainTools from './captain/tools';
 import captainCustomTools from './captain/customTools';
 import captainProducts from './captain/products';
+import captainReviews from './captain/reviews';
 
 const plugins = [];
 
@@ -77,6 +79,7 @@ export default createStore({
     bulkActions,
     campaigns,
     cannedResponse,
+    cardDesigns,
     categories,
     contactConversations,
     contactLabels,
@@ -123,6 +126,7 @@ export default createStore({
     captainTools,
     captainCustomTools,
     captainProducts,
+    captainReviews,
   },
   plugins,
 });

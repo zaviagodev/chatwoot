@@ -1,0 +1,9 @@
+json.id resource.id
+json.name resource.name
+json.design_json resource.design_json
+json.is_default resource.is_default
+json.is_builtin resource.is_builtin
+json.usage_count resource.usage_count
+json.account_id resource.account_id
+json.created_at resource.created_at
+json.updated_at resource.updated_at

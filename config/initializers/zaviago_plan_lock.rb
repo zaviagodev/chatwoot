@@ -34,6 +34,17 @@ Rails.application.config.after_initialize do
       end
     end
 
+    # Also patch the base job's version check to suppress the "new version" banner.
+    # Our fork is pinned; the hub always reports a newer version, showing a
+    # blue bar to all admin users.
+    Internal::CheckNewVersionsJob.prepend(Module.new do
+      private
+
+      def update_version_info
+        Rails.logger.info '[Zaviago] Skipped hub version sync — suppressing update banner'
+      end
+    end)
+
     Rails.logger.info '[Zaviago] Plan lock installed — CheckNewVersionsJob patched'
   end
 end

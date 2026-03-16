@@ -36,6 +36,7 @@ class Captain::Assistant < ApplicationRecord
   has_many :copilot_threads, dependent: :destroy_async
   has_many :scenarios, class_name: 'Captain::Scenario', dependent: :destroy_async
   has_many :products, class_name: 'Captain::Product', dependent: :destroy_async
+  has_many :reviews, class_name: 'Captain::Review', dependent: :destroy_async
 
   store_accessor :config, :temperature, :feature_faq, :feature_memory, :product_name,
                  :erp_tenant_key, :erp_company, :erp_warehouse,
@@ -109,7 +110,7 @@ class Captain::Assistant < ApplicationRecord
       scenarios: scenarios.enabled.map do |scenario|
         {
           title: scenario.title,
-          key: scenario.title.parameterize.underscore,
+          key: "scenario_#{scenario.id}",
           description: scenario.description
         }
       end,

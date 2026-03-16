@@ -36,15 +36,10 @@ module Enterprise::MessageTemplates::HookExecutionService
   def schedule_captain_response
     job_args = [conversation, conversation.inbox.captain_assistant]
 
-    # Copilot: skip if a draft is already pending agent action (must be before debounce lock)
+    # Copilot: when a draft is pending and a new message arrives, clear the old draft and regenerate.
+    # The frontend's draft history (pushToHistory) preserves the old draft for browsing.
     if CAPTAIN_COPILOT_MODE_ENABLED && conversation.copilot_draft? && conversation.additional_attributes&.dig('copilot_draft_pending')
-      # Verify the Redis draft still exists; if it expired (1hr TTL) the flag is stale — clear it and proceed
-      draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: conversation.id)
-      if Redis::Alfred.get(draft_key).present?
-        Rails.logger.info("[CAPTAIN] Skipping draft generation — draft pending for conversation: #{conversation.id}")
-        return
-      end
-      Rails.logger.info("[CAPTAIN] Clearing stale copilot_draft_pending for conversation: #{conversation.id}")
+      Rails.logger.info("[CAPTAIN] New message while draft pending — clearing old draft to regenerate for conversation: #{conversation.id}")
       conversation.clear_copilot_draft!
     end
 

@@ -122,6 +122,18 @@ export default {
       type: Boolean,
       default: false,
     },
+    showProductsButton: {
+      type: Boolean,
+      default: false,
+    },
+    showCardsButton: {
+      type: Boolean,
+      default: false,
+    },
+    showOrderBuilderButton: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
     'replaceText',
@@ -129,6 +141,9 @@ export default {
     'selectWhatsappTemplate',
     'selectContentTemplate',
     'toggleQuotedReply',
+    'toggleProductsPicker',
+    'toggleCardsPicker',
+    'toggleOrderBuilder',
   ],
   setup() {
     const { setSignatureFlagForInbox, fetchSignatureFlagFromUISettings } =
@@ -389,6 +404,33 @@ export default {
         faded
         sm
         @click="toggleInsertArticle"
+      />
+      <NextButton
+        v-if="showProductsButton"
+        v-tooltip.top-end="$t('CONVERSATION.REPLYBOX.TIP_PRODUCT_ICON')"
+        icon="i-ph-storefront"
+        slate
+        faded
+        sm
+        @click="$emit('toggleProductsPicker')"
+      />
+      <NextButton
+        v-if="showCardsButton"
+        v-tooltip.top-end="$t('CONVERSATION.REPLYBOX.TIP_CARDS_ICON')"
+        icon="i-ph-layout"
+        slate
+        faded
+        sm
+        @click="$emit('toggleCardsPicker')"
+      />
+      <NextButton
+        v-if="showOrderBuilderButton"
+        v-tooltip.top-end="'Create Order'"
+        icon="i-ph-shopping-cart-simple"
+        slate
+        faded
+        sm
+        @click="$emit('toggleOrderBuilder')"
       />
     </div>
     <div class="right-wrap">

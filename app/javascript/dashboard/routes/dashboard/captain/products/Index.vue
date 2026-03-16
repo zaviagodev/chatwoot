@@ -15,6 +15,7 @@ import AddProductsDialog from 'dashboard/components-next/captain/pageComponents/
 import InlineDescriptionEditor from 'dashboard/components-next/captain/pageComponents/product/InlineDescriptionEditor.vue';
 import AiEnrichPreview from 'dashboard/components-next/captain/pageComponents/product/AiEnrichPreview.vue';
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
+import VariantList from 'dashboard/components-next/captain/assistant/VariantList.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 
 const route = useRoute();
@@ -157,6 +158,16 @@ const handleAiEnrich = async id => {
   }
 };
 
+const cardExpandedId = ref(null);
+
+const handleCardExpand = id => {
+  collapseEnrichPreview();
+  cardExpandedId.value = cardExpandedId.value === id ? null : id;
+  // Also open the description viewer when expanding via card click
+  expandedProductId.value = cardExpandedId.value;
+  expandedMode.value = 'view';
+};
+
 const handleAction = ({ action, id }) => {
   selectedProduct.value = products.value.find(p => p.id === id);
 
@@ -165,10 +176,12 @@ const handleAction = ({ action, id }) => {
       handleDelete();
     } else if (action === 'viewDescription') {
       collapseEnrichPreview();
+      cardExpandedId.value = id;
       expandedProductId.value = expandedProductId.value === id ? null : id;
       expandedMode.value = 'view';
     } else if (action === 'editDescription') {
       collapseEnrichPreview();
+      cardExpandedId.value = id;
       expandedProductId.value = id;
       expandedMode.value = 'edit';
     } else if (action === 'resync') {
@@ -206,8 +219,48 @@ const handleEnrichEdit = () => {
 
 const handleDescriptionSaved = () => {
   expandedProductId.value = null;
+  cardExpandedId.value = null;
   expandedMode.value = 'view';
   fetchProducts();
+};
+
+const handleVariantToggle = async (productId, itemCode) => {
+  const product = products.value.find(p => p.id === productId);
+  if (!product?.variants) return;
+
+  const updatedVariants = product.variants.map(v =>
+    v.item_code === itemCode ? { ...v, enabled: v.enabled === false } : v
+  );
+
+  try {
+    await store.dispatch('captainProducts/update', {
+      assistantId: selectedAssistantId.value,
+      id: productId,
+      variants: updatedVariants,
+    });
+  } catch {
+    useAlert(t('CAPTAIN_PRODUCTS.TOAST.SYNC_ERROR'));
+  }
+};
+
+const handleBulkToggle = async (productId, enableAll) => {
+  const product = products.value.find(p => p.id === productId);
+  if (!product?.variants) return;
+
+  const updatedVariants = product.variants.map(v => ({
+    ...v,
+    enabled: enableAll,
+  }));
+
+  try {
+    await store.dispatch('captainProducts/update', {
+      assistantId: selectedAssistantId.value,
+      id: productId,
+      variants: updatedVariants,
+    });
+  } catch {
+    useAlert(t('CAPTAIN_PRODUCTS.TOAST.SYNC_ERROR'));
+  }
 };
 
 const onDeleteSuccess = () => {
@@ -300,7 +353,11 @@ onMounted(() => {
             :stock-status="product.stock_status"
             :description-source="product.description_source"
             :item-group="product.item_group"
+            :variants="product.variants || []"
+            :has-variants="!!(product.variants && product.variants.length)"
+            :is-expanded="cardExpandedId === product.id"
             @action="handleAction"
+            @expand="handleCardExpand"
           />
           <InlineDescriptionEditor
             v-if="expandedProductId === product.id"
@@ -310,6 +367,18 @@ onMounted(() => {
             @saved="handleDescriptionSaved"
             @close="expandedProductId = null"
             @edit="expandedMode = 'edit'"
+          />
+          <VariantList
+            v-if="
+              cardExpandedId === product.id &&
+              product.variants &&
+              product.variants.length
+            "
+            :variants="product.variants"
+            :currency="product.currency"
+            :parent-price="product.price"
+            @toggle="itemCode => handleVariantToggle(product.id, itemCode)"
+            @bulk-toggle="enableAll => handleBulkToggle(product.id, enableAll)"
           />
           <AiEnrichPreview
             v-if="enrichingProductId === product.id"

@@ -64,7 +64,7 @@ class Api::V1::Accounts::Captain::AssistantResponsesController < Api::V1::Accoun
 
   def set_responses
     @responses = Current.account.captain_assistant_responses
-                                     .where.not(documentable_type: 'Captain::Product')
+                                     .where(documentable_type: ['Captain::Document', 'User', nil])
                                      .includes(:assistant, :documentable).ordered
   end
 

@@ -74,10 +74,6 @@ const applyDebouncedSearch = debounce(val => {
 
 watch(searchQuery, val => applyDebouncedSearch(val));
 
-const hasErpConnection = computed(() =>
-  products.value.some(p => !!p.erp_company)
-);
-
 const filteredProducts = computed(() => {
   let result = products.value;
   const q = debouncedSearch.value.toLowerCase().trim();
@@ -360,7 +356,6 @@ onMounted(() => {
   >
     <template #emptyState>
       <ProductPageEmptyState
-        :has-erp-connection="hasErpConnection"
         @add-from-erp="handleOpenAddDialog"
         @add-manually="handleAddManually"
       />
@@ -376,7 +371,6 @@ onMounted(() => {
         :total-count="products.length"
         :search-query="searchQuery"
         :filter-value="filterValue"
-        :has-erp-connection="hasErpConnection"
         @update:search-query="searchQuery = $event"
         @update:filter-value="filterValue = $event"
         @add-from-erp="handleOpenAddDialog"

@@ -5,11 +5,10 @@ import { useToggle } from '@vueuse/core';
 import Button from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 
-const props = defineProps({
+defineProps({
   totalCount: { type: Number, default: 0 },
   searchQuery: { type: String, default: '' },
   filterValue: { type: String, default: 'all' },
-  hasErpConnection: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -55,11 +54,7 @@ const handleAddAction = ({ action }) => {
 };
 
 const handleAddClick = () => {
-  if (props.hasErpConnection) {
-    toggleAddDropdown();
-  } else {
-    emit('addManually');
-  }
+  toggleAddDropdown();
 };
 </script>
 
@@ -115,7 +110,7 @@ const handleAddClick = () => {
         @click="handleAddClick"
       />
       <DropdownMenu
-        v-if="showAddDropdown && hasErpConnection"
+        v-if="showAddDropdown"
         :menu-items="addMenuItems"
         class="top-full mt-1 ltr:right-0 rtl:left-0"
         @action="handleAddAction($event)"

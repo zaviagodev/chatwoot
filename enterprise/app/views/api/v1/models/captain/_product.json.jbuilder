@@ -12,6 +12,7 @@ json.variants product.variants
 json.specs product.specs
 json.formatted_text product.formatted_text
 json.description_source product.description_source
+json.status product.status
 json.erp_company product.erp_company
 json.assistant_id product.assistant_id
 json.account_id product.account_id

@@ -6,6 +6,14 @@ class Captain::Products::SyncService
   def sync
     return unless @product.formatted_text.present?
 
+    # Only active products get knowledge base embeddings.
+    # Treat nil status as 'active' (legacy rows before status migration).
+    effective_status = @product.status.presence || 'active'
+    unless effective_status == 'active'
+      remove if @product.responses.exists?
+      return
+    end
+
     response = find_or_initialize_response
     response.question = build_search_question
     response.answer = @product.formatted_text

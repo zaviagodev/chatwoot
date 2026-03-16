@@ -20,7 +20,8 @@ class Captain::Products::ManageService
       variants: product_data[:variants] || [],
       specs: product_data[:specs] || [],
       erp_company: product_data[:erp_company] || @assistant.erp_company,
-      description_source: 'auto'
+      description_source: product_data.fetch(:description_source, 'auto'),
+      status: product_data.fetch(:status, 'active')
     )
 
     # Use ERPNext pre-formatted text, fallback to local format
@@ -51,10 +52,10 @@ class Captain::Products::ManageService
       item_group: product_data.fetch(:item_group, product.item_group),
       image_url: product_data.fetch(:image, product.image_url),
       variants: new_variants,
-      specs: product_data.fetch(:specs, product.specs)
+      specs: product_data.fetch(:specs, product.specs),
+      status: product_data.fetch(:status, product.status),
+      description_source: reset_source ? 'auto' : product_data.fetch(:description_source, product.description_source)
     }
-
-    attrs[:description_source] = 'auto' if reset_source
 
     product.assign_attributes(attrs)
 

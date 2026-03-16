@@ -1,21 +1,24 @@
 <script setup>
-import { computed, onMounted, ref, nextTick } from 'vue';
+import { computed, onMounted, ref, nextTick, watch } from 'vue';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { debounce } from '@chatwoot/utils';
 
 import PageLayout from 'dashboard/components-next/captain/PageLayout.vue';
 import CaptainPaywall from 'dashboard/components-next/captain/pageComponents/Paywall.vue';
 import ProductCard from 'dashboard/components-next/captain/assistant/ProductCard.vue';
 import ProductPageEmptyState from 'dashboard/components-next/captain/pageComponents/emptyStates/ProductPageEmptyState.vue';
+import ProductsToolbar from 'dashboard/components-next/captain/pageComponents/product/ProductsToolbar.vue';
 import AddProductsDialog from 'dashboard/components-next/captain/pageComponents/product/AddProductsDialog.vue';
 import InlineDescriptionEditor from 'dashboard/components-next/captain/pageComponents/product/InlineDescriptionEditor.vue';
 import AiEnrichPreview from 'dashboard/components-next/captain/pageComponents/product/AiEnrichPreview.vue';
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import VariantList from 'dashboard/components-next/captain/assistant/VariantList.vue';
+import ProductFormDrawer from 'dashboard/components-next/captain/pageComponents/product/ProductFormDrawer.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 
 const route = useRoute();
@@ -51,11 +54,62 @@ const showAddDialog = ref(false);
 const addProductsDialog = ref(null);
 const deleteProductDialog = ref(null);
 
-// AI enrichment state
-const enrichingProductId = ref(null);
-const enrichedText = ref('');
-const isEnriching = ref(false);
-const enrichError = ref(false);
+// Product form drawer state
+const showProductDrawer = ref(false);
+const editingProduct = ref(null);
+
+const existingCategories = computed(() => {
+  const cats = products.value.map(p => p.item_group).filter(Boolean);
+  return [...new Set(cats)];
+});
+
+// Search & filter state
+const searchQuery = ref('');
+const debouncedSearch = ref('');
+const filterValue = ref('all');
+
+const applyDebouncedSearch = debounce(val => {
+  debouncedSearch.value = val;
+}, 300);
+
+watch(searchQuery, val => applyDebouncedSearch(val));
+
+const hasErpConnection = computed(() =>
+  products.value.some(p => !!p.erp_company)
+);
+
+const filteredProducts = computed(() => {
+  let result = products.value;
+  const q = debouncedSearch.value.toLowerCase().trim();
+  if (q) {
+    result = result.filter(
+      p =>
+        (p.item_name || '').toLowerCase().includes(q) ||
+        (p.item_code || '').toLowerCase().includes(q) ||
+        (p.item_group || '').toLowerCase().includes(q)
+    );
+  }
+  if (filterValue.value === 'in_stock') {
+    result = result.filter(p => p.stock_status === 'in_stock');
+  } else if (filterValue.value === 'out_of_stock') {
+    result = result.filter(p => p.stock_status === 'out_of_stock');
+  } else if (filterValue.value === 'erp') {
+    result = result.filter(p => !!p.erp_company);
+  } else if (filterValue.value === 'manual') {
+    result = result.filter(p => !p.erp_company);
+  }
+  return result;
+});
+
+const handleAddManually = () => {
+  editingProduct.value = null;
+  showProductDrawer.value = true;
+};
+
+const handleOpenEditDrawer = id => {
+  editingProduct.value = products.value.find(p => p.id === id) || null;
+  showProductDrawer.value = true;
+};
 
 const fetchProducts = (page = 1) => {
   store.dispatch('captainProducts/get', {
@@ -63,6 +117,23 @@ const fetchProducts = (page = 1) => {
     assistantId: selectedAssistantId.value,
   });
 };
+
+const handleDrawerClose = () => {
+  showProductDrawer.value = false;
+  editingProduct.value = null;
+};
+
+const handleDrawerSaved = () => {
+  showProductDrawer.value = false;
+  editingProduct.value = null;
+  fetchProducts();
+};
+
+// AI enrichment state
+const enrichingProductId = ref(null);
+const enrichedText = ref('');
+const isEnriching = ref(false);
+const enrichError = ref(false);
 
 const fetchSyncStatus = () => {
   store.dispatch('captainProducts/fetchSyncStatus', {
@@ -162,10 +233,7 @@ const cardExpandedId = ref(null);
 
 const handleCardExpand = id => {
   collapseEnrichPreview();
-  cardExpandedId.value = cardExpandedId.value === id ? null : id;
-  // Also open the description viewer when expanding via card click
-  expandedProductId.value = cardExpandedId.value;
-  expandedMode.value = 'view';
+  handleOpenEditDrawer(id);
 };
 
 const handleAction = ({ action, id }) => {
@@ -279,20 +347,23 @@ onMounted(() => {
 <template>
   <PageLayout
     :header-title="$t('CAPTAIN_PRODUCTS.HEADER')"
-    :button-label="$t('CAPTAIN_PRODUCTS.ADD_NEW')"
+    button-label=""
     :button-policy="['administrator']"
     :total-count="productsMeta.totalCount"
     :current-page="productsMeta.page"
     :show-pagination-footer="!isFetching && !!products.length"
-    :is-fetching="isFetching"
-    :is-empty="!products.length"
+    :is-fetching="false"
+    :is-empty="!products.length && !isFetching"
     :show-know-more="false"
     :feature-flag="FEATURE_FLAGS.CAPTAIN"
     @update:current-page="onPageChange"
-    @click="handleOpenAddDialog"
   >
     <template #emptyState>
-      <ProductPageEmptyState @click="handleOpenAddDialog" />
+      <ProductPageEmptyState
+        :has-erp-connection="hasErpConnection"
+        @add-from-erp="handleOpenAddDialog"
+        @add-manually="handleAddManually"
+      />
     </template>
 
     <template #paywall>
@@ -300,6 +371,18 @@ onMounted(() => {
     </template>
 
     <template #body>
+      <!-- Toolbar -->
+      <ProductsToolbar
+        :total-count="products.length"
+        :search-query="searchQuery"
+        :filter-value="filterValue"
+        :has-erp-connection="hasErpConnection"
+        @update:search-query="searchQuery = $event"
+        @update:filter-value="filterValue = $event"
+        @add-from-erp="handleOpenAddDialog"
+        @add-manually="handleAddManually"
+      />
+
       <!-- Sync status bar -->
       <div
         v-if="products.length"
@@ -341,10 +424,44 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="flex flex-col gap-4">
-        <template v-for="product in products" :key="product.id">
+      <!-- Loading skeletons -->
+      <div
+        v-if="isFetching"
+        class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+      >
+        <div
+          v-for="n in 6"
+          :key="n"
+          class="h-24 rounded-xl bg-n-alpha-2 animate-pulse"
+        />
+      </div>
+
+      <!-- No results after search/filter -->
+      <div
+        v-else-if="filteredProducts.length === 0 && products.length > 0"
+        class="flex flex-col items-center gap-2 py-12 text-center"
+      >
+        <p class="text-sm text-n-slate-11">
+          {{ $t('CAPTAIN_PRODUCTS.SEARCH.NO_RESULTS_TITLE') }}
+        </p>
+        <button
+          class="text-xs text-b-600 hover:text-b-700 font-medium"
+          @click="
+            searchQuery = '';
+            filterValue = 'all';
+          "
+        >
+          {{ $t('CAPTAIN_PRODUCTS.SEARCH.CLEAR_SEARCH') }}
+        </button>
+      </div>
+
+      <!-- Product card grid -->
+      <div v-else class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <ProductCard
+            v-for="product in filteredProducts"
             :id="product.id"
+            :key="product.id"
             :item-name="product.item_name"
             :item-code="product.item_code"
             :price="product.price"
@@ -356,9 +473,18 @@ onMounted(() => {
             :variants="product.variants || []"
             :has-variants="!!(product.variants && product.variants.length)"
             :is-expanded="cardExpandedId === product.id"
+            :image-url="product.image_url"
+            :erp-company="product.erp_company"
             @action="handleAction"
             @expand="handleCardExpand"
           />
+        </div>
+
+        <!-- Expanded panels render below the grid -->
+        <template
+          v-for="product in filteredProducts"
+          :key="'expand-' + product.id"
+        >
           <InlineDescriptionEditor
             v-if="expandedProductId === product.id"
             :product="product"
@@ -401,6 +527,14 @@ onMounted(() => {
       :assistant-id="selectedAssistantId"
       :existing-products="products"
       @close="handleAddDialogClose"
+    />
+    <ProductFormDrawer
+      :is-open="showProductDrawer"
+      :product="editingProduct"
+      :assistant-id="selectedAssistantId"
+      :existing-categories="existingCategories"
+      @close="handleDrawerClose"
+      @saved="handleDrawerSaved"
     />
     <DeleteDialog
       v-if="selectedProduct"

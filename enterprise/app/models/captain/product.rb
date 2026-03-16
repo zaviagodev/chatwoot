@@ -10,8 +10,10 @@ class Captain::Product < ApplicationRecord
             uniqueness: { scope: [:account_id, :assistant_id], message: 'already exists for this assistant' }
   validates :item_name, presence: true
   validates :description_source, inclusion: { in: %w[auto ai manual] }
+  validates :status, inclusion: { in: %w[active draft archived] }, allow_nil: true
 
   scope :ordered, -> { order(created_at: :desc) }
+  scope :active, -> { where(status: 'active') }
   scope :for_account, ->(account_id) { where(account_id: account_id) }
   scope :for_assistant, ->(assistant_id) { where(assistant_id: assistant_id) }
   scope :in_stock, -> { where(stock_status: 'in_stock') }

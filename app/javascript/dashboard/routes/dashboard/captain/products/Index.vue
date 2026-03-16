@@ -425,14 +425,11 @@ onMounted(() => {
       </div>
 
       <!-- Loading skeletons -->
-      <div
-        v-if="isFetching"
-        class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-      >
+      <div v-if="isFetching" class="flex flex-col gap-4">
         <div
-          v-for="n in 6"
+          v-for="n in 4"
           :key="n"
-          class="h-24 rounded-xl bg-n-alpha-2 animate-pulse"
+          class="h-20 rounded-xl bg-n-alpha-2 animate-pulse"
         />
       </div>
 
@@ -455,13 +452,11 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Product card grid -->
+      <!-- Product list (table mode) -->
       <div v-else class="flex flex-col gap-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template v-for="product in filteredProducts" :key="product.id">
           <ProductCard
-            v-for="product in filteredProducts"
             :id="product.id"
-            :key="product.id"
             :item-name="product.item_name"
             :item-code="product.item_code"
             :price="product.price"
@@ -478,13 +473,6 @@ onMounted(() => {
             @action="handleAction"
             @expand="handleCardExpand"
           />
-        </div>
-
-        <!-- Expanded panels render below the grid -->
-        <template
-          v-for="product in filteredProducts"
-          :key="'expand-' + product.id"
-        >
           <InlineDescriptionEditor
             v-if="expandedProductId === product.id"
             :product="product"

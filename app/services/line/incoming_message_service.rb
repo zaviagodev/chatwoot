@@ -41,7 +41,7 @@ class Line::IncomingMessageService
     return if @line_contact_info['userId'].blank?
 
     set_contact
-    set_conversation
+    lock_and_set_conversation
 
     return unless message_created?(event)
 
@@ -288,8 +288,43 @@ class Line::IncomingMessageService
     }
   end
 
+  # LINE sends each message as a separate webhook, processed by parallel Sidekiq threads.
+  # Without a lock, rapid messages (e.g., 5 images) all see no existing conversation and
+  # each create one — producing 5 duplicate conversations. Redis lock serializes creation.
+  def lock_and_set_conversation
+    lock_key = "line_conversation_lock::#{@contact_inbox.id}"
+    lock_manager = Redis::LockManager.new
+    retries = 0
+
+    loop do
+      if lock_manager.lock(lock_key, 5.seconds)
+        begin
+          set_conversation
+        ensure
+          lock_manager.unlock(lock_key)
+        end
+        return
+      end
+
+      retries += 1
+      break if retries > 10
+
+      sleep(0.1 * retries)
+    end
+
+    # Fallback after retries exhausted — try without lock (better than dropping the message)
+    set_conversation
+  end
+
   def set_conversation
-    @conversation = @contact_inbox.conversations.first
+    # Match WhatsApp pattern: only reuse non-resolved conversations.
+    # If lock_to_single_conversation is true, reuse any conversation including resolved.
+    @conversation = if @inbox.lock_to_single_conversation
+                      @contact_inbox.conversations.last
+                    else
+                      @contact_inbox.conversations
+                                    .where.not(status: :resolved).last
+                    end
     return if @conversation
 
     @conversation = ::Conversation.create!(conversation_params)

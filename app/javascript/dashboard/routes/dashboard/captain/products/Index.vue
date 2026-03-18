@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, nextTick, watch } from 'vue';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -18,10 +18,11 @@ import InlineDescriptionEditor from 'dashboard/components-next/captain/pageCompo
 import AiEnrichPreview from 'dashboard/components-next/captain/pageComponents/product/AiEnrichPreview.vue';
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import VariantList from 'dashboard/components-next/captain/assistant/VariantList.vue';
-import ProductFormDrawer from 'dashboard/components-next/captain/pageComponents/product/ProductFormDrawer.vue';
+import ProductCreateDrawer from 'dashboard/components-next/captain/pageComponents/product/ProductCreateDrawer.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 const { t } = useI18n();
 
@@ -54,9 +55,8 @@ const showAddDialog = ref(false);
 const addProductsDialog = ref(null);
 const deleteProductDialog = ref(null);
 
-// Product form drawer state
-const showProductDrawer = ref(false);
-const editingProduct = ref(null);
+// Product create drawer state
+const showCreateDrawer = ref(false);
 
 const existingCategories = computed(() => {
   const cats = products.value.map(p => p.item_group).filter(Boolean);
@@ -98,13 +98,7 @@ const filteredProducts = computed(() => {
 });
 
 const handleAddManually = () => {
-  editingProduct.value = null;
-  showProductDrawer.value = true;
-};
-
-const handleOpenEditDrawer = id => {
-  editingProduct.value = products.value.find(p => p.id === id) || null;
-  showProductDrawer.value = true;
+  showCreateDrawer.value = true;
 };
 
 const fetchProducts = (page = 1) => {
@@ -115,13 +109,11 @@ const fetchProducts = (page = 1) => {
 };
 
 const handleDrawerClose = () => {
-  showProductDrawer.value = false;
-  editingProduct.value = null;
+  showCreateDrawer.value = false;
 };
 
 const handleDrawerSaved = () => {
-  showProductDrawer.value = false;
-  editingProduct.value = null;
+  showCreateDrawer.value = false;
   fetchProducts();
 };
 
@@ -229,7 +221,13 @@ const cardExpandedId = ref(null);
 
 const handleCardExpand = id => {
   collapseEnrichPreview();
-  handleOpenEditDrawer(id);
+  router.push({
+    name: 'captain_product_detail',
+    params: {
+      ...route.params,
+      productId: id,
+    },
+  });
 };
 
 const handleAction = ({ action, id }) => {
@@ -510,9 +508,8 @@ onMounted(() => {
       :existing-products="products"
       @close="handleAddDialogClose"
     />
-    <ProductFormDrawer
-      :is-open="showProductDrawer"
-      :product="editingProduct"
+    <ProductCreateDrawer
+      :is-open="showCreateDrawer"
       :assistant-id="selectedAssistantId"
       :existing-categories="existingCategories"
       @close="handleDrawerClose"

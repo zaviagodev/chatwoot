@@ -14,6 +14,8 @@ import AssistantGuidelinesIndex from './assistants/guidelines/Index.vue';
 import AssistantScenariosIndex from './assistants/scenarios/Index.vue';
 import DocumentsIndex from './documents/Index.vue';
 import ProductsIndex from './products/Index.vue';
+import ProductDetailShow from './products/Show.vue';
+import VariantDetailPage from './products/VariantDetail.vue';
 import ReviewsIndex from './reviews/Index.vue';
 import ResponsesIndex from './responses/Index.vue';
 import ResponsesPendingIndex from './responses/Pending.vue';
@@ -48,6 +50,22 @@ const assistantRoutes = [
     path: frontendURL('accounts/:accountId/captain/:assistantId/products'),
     component: ProductsIndex,
     name: 'captain_assistants_products_index',
+    meta,
+  },
+  {
+    path: frontendURL(
+      'accounts/:accountId/captain/:assistantId/products/:productId'
+    ),
+    component: ProductDetailShow,
+    name: 'captain_product_detail',
+    meta,
+  },
+  {
+    path: frontendURL(
+      'accounts/:accountId/captain/:assistantId/products/:productId/variants/:variantIndex'
+    ),
+    component: VariantDetailPage,
+    name: 'captain_variant_detail',
     meta,
   },
   {

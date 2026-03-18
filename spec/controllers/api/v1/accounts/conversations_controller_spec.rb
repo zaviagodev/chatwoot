@@ -853,6 +853,112 @@ RSpec.describe 'Conversations API', type: :request do
     end
   end
 
+  describe 'POST /api/v1/accounts/{account.id}/conversations/:id/pause_ai' do
+    let(:conversation) { create(:conversation, account: account) }
+
+    before do
+      conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+      stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', true)
+    end
+
+    context 'when it is an unauthenticated user' do
+      it 'returns unauthorized' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/pause_ai"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when it is an authenticated user' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+
+      before do
+        create(:inbox_member, user: agent, inbox: conversation.inbox)
+      end
+
+      it 'pauses AI with permanent mode' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/pause_ai",
+             headers: agent.create_new_auth_token,
+             params: { pause_mode: 'permanent' },
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        conversation.reload
+        expect(conversation.copilot_mode).to eq('off')
+        expect(conversation.additional_attributes['pause_mode']).to eq('permanent')
+        expect(conversation.additional_attributes['pause_restore_mode']).to eq('auto_send')
+      end
+
+      it 'pauses AI with timed mode' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/pause_ai",
+             headers: agent.create_new_auth_token,
+             params: { pause_mode: 'timed', pause_duration_minutes: 60 },
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        conversation.reload
+        expect(conversation.additional_attributes['pause_mode']).to eq('timed')
+        expect(conversation.additional_attributes['pause_expires_at']).to be_present
+      end
+
+      it 'returns unprocessable_entity for invalid pause_mode' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/pause_ai",
+             headers: agent.create_new_auth_token,
+             params: { pause_mode: 'invalid' },
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+  end
+
+  describe 'POST /api/v1/accounts/{account.id}/conversations/:id/resume_ai' do
+    let(:conversation) { create(:conversation, account: account) }
+
+    before do
+      conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+      conversation.pause_ai!(mode: 'permanent')
+      stub_const('Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED', true)
+    end
+
+    context 'when it is an unauthenticated user' do
+      it 'returns unauthorized' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/resume_ai"
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when it is an authenticated user' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+
+      before do
+        create(:inbox_member, user: agent, inbox: conversation.inbox)
+      end
+
+      it 'resumes AI and restores previous copilot mode' do
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/resume_ai",
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        conversation.reload
+        expect(conversation.copilot_mode).to eq('auto_send')
+        expect(conversation.additional_attributes['pause_mode']).to be_nil
+      end
+
+      it 'returns unprocessable_entity when conversation is not paused' do
+        conversation.resume_ai! # resume first
+
+        post "/api/v1/accounts/#{account.id}/conversations/#{conversation.display_id}/resume_ai",
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+  end
+
   describe 'POST /api/v1/accounts/{account.id}/conversations/:id/transcript' do
     let(:conversation) { create(:conversation, account: account) }
 

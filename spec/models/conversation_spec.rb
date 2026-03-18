@@ -1208,4 +1208,228 @@ RSpec.describe Conversation do
       end
     end
   end
+
+  describe 'pause AI helpers' do
+    let(:account) { create(:account) }
+    let(:conversation) { create(:conversation, account: account) }
+
+    before do
+      conversation.update!(additional_attributes: { 'copilot_mode' => 'auto_send' })
+    end
+
+    describe '#pause_ai!' do
+      it 'sets copilot_mode to off and stores pause metadata' do
+        conversation.pause_ai!(mode: 'permanent')
+        conversation.reload
+
+        expect(conversation.copilot_mode).to eq('off')
+        expect(conversation.additional_attributes['pause_mode']).to eq('permanent')
+        expect(conversation.additional_attributes['pause_restore_mode']).to eq('auto_send')
+      end
+
+      it 'stores pause_expires_at and pause_nonce for timed mode' do
+        freeze_time do
+          conversation.pause_ai!(mode: 'timed', duration_minutes: 60)
+          conversation.reload
+
+          expect(conversation.additional_attributes['pause_mode']).to eq('timed')
+          expect(conversation.additional_attributes['pause_expires_at']).to eq(60.minutes.from_now.iso8601)
+          expect(conversation.additional_attributes['pause_nonce']).to be_present
+          expect(conversation.additional_attributes['pause_nonce'].length).to eq(16) # SecureRandom.hex(8)
+        end
+      end
+
+      it 'enqueues Captain::PauseExpiryJob for timed mode' do
+        stub_const('Captain::PauseExpiryJob', Class.new(ApplicationJob) {
+          def perform(*); end
+        })
+
+        expect {
+          conversation.pause_ai!(mode: 'timed', duration_minutes: 60)
+        }.to have_enqueued_job(Captain::PauseExpiryJob)
+      end
+
+      it 'does not enqueue job for permanent mode' do
+        expect {
+          conversation.pause_ai!(mode: 'permanent')
+        }.not_to have_enqueued_job
+      end
+
+      it 'raises ArgumentError for invalid mode' do
+        expect { conversation.pause_ai!(mode: 'invalid') }.to raise_error(ArgumentError, /Invalid pause mode/)
+      end
+
+      it 'raises ArgumentError for timed mode without duration' do
+        expect { conversation.pause_ai!(mode: 'timed') }.to raise_error(ArgumentError, /duration_minutes required/)
+      end
+
+      it 'is idempotent — does not overwrite pause_restore_mode if already paused' do
+        conversation.pause_ai!(mode: 'permanent')
+        conversation.reload
+
+        expect(conversation.additional_attributes['pause_restore_mode']).to eq('auto_send')
+
+        # Calling again should be a no-op
+        conversation.pause_ai!(mode: 'until_resolved')
+        conversation.reload
+
+        # pause_restore_mode should still be auto_send, not off
+        expect(conversation.additional_attributes['pause_restore_mode']).to eq('auto_send')
+        expect(conversation.additional_attributes['pause_mode']).to eq('permanent')
+      end
+
+      it 'clears pending copilot draft on pause' do
+        draft_key = format(Redis::Alfred::COPILOT_DRAFT_KEY, conversation_id: conversation.id)
+        Redis::Alfred.set(draft_key, 'test_draft', ex: 3600)
+        conversation.update!(additional_attributes: conversation.additional_attributes.merge('copilot_draft_pending' => true))
+
+        conversation.pause_ai!(mode: 'permanent')
+
+        expect(Redis::Alfred.get(draft_key)).to be_nil
+      end
+
+      it 'preserves other additional_attributes' do
+        conversation.update!(additional_attributes: conversation.additional_attributes.merge('conversation_language' => 'th'))
+
+        conversation.pause_ai!(mode: 'permanent')
+        conversation.reload
+
+        expect(conversation.additional_attributes['conversation_language']).to eq('th')
+        expect(conversation.additional_attributes['pause_mode']).to eq('permanent')
+      end
+    end
+
+    describe '#resume_ai!' do
+      before do
+        conversation.pause_ai!(mode: 'permanent')
+      end
+
+      it 'restores copilot_mode from pause_restore_mode' do
+        conversation.resume_ai!
+        conversation.reload
+
+        expect(conversation.copilot_mode).to eq('auto_send')
+      end
+
+      it 'clears all pause metadata including pause_nonce' do
+        # Re-pause as timed to have nonce
+        conversation.resume_ai!
+        conversation.pause_ai!(mode: 'timed', duration_minutes: 60)
+        expect(conversation.reload.additional_attributes['pause_nonce']).to be_present
+
+        conversation.resume_ai!
+        conversation.reload
+
+        expect(conversation.additional_attributes['pause_mode']).to be_nil
+        expect(conversation.additional_attributes['pause_expires_at']).to be_nil
+        expect(conversation.additional_attributes['pause_restore_mode']).to be_nil
+        expect(conversation.additional_attributes['pause_nonce']).to be_nil
+      end
+
+      it 'falls back to draft if pause_restore_mode is missing' do
+        conversation.update!(additional_attributes: conversation.additional_attributes.except('pause_restore_mode'))
+
+        conversation.resume_ai!
+        conversation.reload
+
+        expect(conversation.copilot_mode).to eq('draft')
+      end
+    end
+
+    describe '#ai_paused?' do
+      it 'returns true when copilot_mode is off with pause_mode present' do
+        conversation.pause_ai!(mode: 'permanent')
+        expect(conversation.ai_paused?).to be(true)
+      end
+
+      it 'returns false when copilot_mode is off without pause_mode (manual off)' do
+        conversation.update_copilot_mode!('off')
+        expect(conversation.ai_paused?).to be(false)
+      end
+
+      it 'returns false when copilot_mode is draft' do
+        expect(conversation.ai_paused?).to be(false)
+      end
+    end
+
+    describe '#pause_metadata' do
+      it 'returns metadata hash when paused' do
+        conversation.pause_ai!(mode: 'permanent')
+
+        metadata = conversation.pause_metadata
+        expect(metadata[:mode]).to eq('permanent')
+        expect(metadata[:restore_mode]).to eq('auto_send')
+      end
+
+      it 'returns nil when not paused' do
+        expect(conversation.pause_metadata).to be_nil
+      end
+    end
+
+    describe '#clear_session_pause_on_resolve' do
+      it 'clears until_resolved pause when conversation is resolved' do
+        conversation.pause_ai!(mode: 'until_resolved')
+        expect(conversation.reload.ai_paused?).to be(true)
+
+        conversation.update!(status: :resolved)
+        conversation.reload
+
+        expect(conversation.ai_paused?).to be(false)
+        expect(conversation.additional_attributes['copilot_mode']).to eq('auto_send')
+        expect(conversation.additional_attributes['pause_mode']).to be_nil
+        expect(conversation.additional_attributes['pause_restore_mode']).to be_nil
+      end
+
+      it 'does NOT clear permanent pause when conversation is resolved' do
+        conversation.pause_ai!(mode: 'permanent')
+        expect(conversation.reload.ai_paused?).to be(true)
+
+        conversation.update!(status: :resolved)
+        conversation.reload
+
+        expect(conversation.ai_paused?).to be(true)
+        expect(conversation.additional_attributes['copilot_mode']).to eq('off')
+        expect(conversation.additional_attributes['pause_mode']).to eq('permanent')
+      end
+
+      it 'does NOT clear timed pause when conversation is resolved' do
+        conversation.pause_ai!(mode: 'timed', duration_minutes: 60)
+        expect(conversation.reload.ai_paused?).to be(true)
+
+        conversation.update!(status: :resolved)
+        conversation.reload
+
+        expect(conversation.ai_paused?).to be(true)
+        expect(conversation.additional_attributes['copilot_mode']).to eq('off')
+        expect(conversation.additional_attributes['pause_mode']).to eq('timed')
+      end
+
+      it 'does nothing when resolving a conversation with no pause' do
+        expect(conversation.additional_attributes['copilot_mode']).to eq('auto_send')
+
+        conversation.update!(status: :resolved)
+        conversation.reload
+
+        expect(conversation.ai_paused?).to be(false)
+        expect(conversation.additional_attributes['copilot_mode']).to eq('auto_send')
+      end
+
+      it 'full lifecycle: pause until_resolved → resolve → reopen → AI active' do
+        conversation.pause_ai!(mode: 'until_resolved')
+        expect(conversation.reload.ai_paused?).to be(true)
+
+        # Resolve clears the pause
+        conversation.update!(status: :resolved)
+        conversation.reload
+        expect(conversation.ai_paused?).to be(false)
+        expect(conversation.additional_attributes['copilot_mode']).to eq('auto_send')
+
+        # Reopen — AI stays active (mode was already restored on resolve)
+        conversation.update!(status: :open)
+        conversation.reload
+        expect(conversation.ai_paused?).to be(false)
+        expect(conversation.additional_attributes['copilot_mode']).to eq('auto_send')
+      end
+    end
+  end
 end

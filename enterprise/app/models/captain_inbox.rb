@@ -33,6 +33,9 @@ class CaptainInbox < ApplicationRecord
   def propagate_copilot_mode
     new_mode = copilot_default_mode
     inbox.conversations.find_each do |conversation|
+      # Skip paused conversations — their copilot_mode is managed by pause/resume lifecycle
+      next if conversation.additional_attributes&.dig('pause_mode').present?
+
       merged = (conversation.additional_attributes || {}).merge('copilot_mode' => new_mode)
       conversation.update_columns(additional_attributes: merged)
     end

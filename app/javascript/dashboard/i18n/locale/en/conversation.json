@@ -103,6 +103,32 @@
         "RT": "RT {status}",
         "MISSED": "missed",
         "DUE": "due"
+      },
+      "CAPTAIN_AI": {
+        "AUTO_SEND": "AI",
+        "DRAFT": "AI",
+        "PAUSED": "AI",
+        "TOOLTIP_AUTO_SEND": "Captain AI: Auto-sending replies",
+        "TOOLTIP_DRAFT": "Captain AI: Generating drafts",
+        "TOOLTIP_PAUSED": "Captain AI: Paused",
+        "TOOLTIP_PAUSED_TIMED": "Captain AI: Paused (resumes in {time})",
+        "POPOVER_TITLE": "Captain AI",
+        "STATUS_AUTO_SEND": "Currently: Auto-sending replies",
+        "STATUS_DRAFT": "Currently: Generating drafts",
+        "PAUSE_PERMANENT": "Pause until I re-enable",
+        "PAUSE_PERMANENT_DESC": "AI stays off until you turn it back on manually.",
+        "PAUSE_UNTIL_RESOLVED": "Pause until resolved",
+        "PAUSE_UNTIL_RESOLVED_DESC": "AI resumes when this conversation is resolved and reopened.",
+        "PAUSE_TIMED": "Pause for...",
+        "PAUSE_BUTTON": "Pause AI",
+        "RESUME_BUTTON": "Resume AI",
+        "RESUME_WILL_RESTORE": "Will resume in: {mode} mode",
+        "PAUSED_PERMANENT_DESC": "Paused until you re-enable.",
+        "PAUSED_UNTIL_RESOLVED_DESC": "Paused until this conversation is resolved.",
+        "PAUSED_TIMED_DESC": "Paused for {time} more minutes.",
+        "TOAST_PAUSED": "Captain AI paused on this conversation",
+        "TOAST_RESUMED": "Captain AI resumed on this conversation",
+        "TOAST_ERROR": "Could not update AI status. Try again."
       }
     },
     "RESOLVE_DROPDOWN": {

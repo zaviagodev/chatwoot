@@ -175,6 +175,72 @@ class Conversation < ApplicationRecord
     # rubocop:enable Rails/SkipsModelValidations
   end
 
+  # Pause AI: per-conversation AI pause with mode metadata
+  PAUSE_MODES = %w[permanent until_resolved timed].freeze
+
+  def pause_ai!(mode:, duration_minutes: nil)
+    raise ArgumentError, "Invalid pause mode: #{mode}" unless PAUSE_MODES.include?(mode)
+    raise ArgumentError, 'duration_minutes required for timed mode' if mode == 'timed' && duration_minutes.blank?
+
+    # Idempotency: don't overwrite pause_restore_mode if already paused
+    if ai_paused?
+      Rails.logger.info("[CAPTAIN] pause_ai! called on already-paused conversation #{id}, skipping")
+      return
+    end
+
+    pause_attrs = {
+      'copilot_mode' => 'off',
+      'pause_mode' => mode,
+      'pause_restore_mode' => copilot_mode
+    }
+
+    if mode == 'timed'
+      pause_attrs['pause_expires_at'] = duration_minutes.to_i.minutes.from_now.iso8601
+      pause_attrs['pause_nonce'] = SecureRandom.hex(8)
+    end
+
+    update!(additional_attributes: (additional_attributes || {}).merge(pause_attrs))
+    clear_copilot_draft! if additional_attributes&.dig('copilot_draft_pending')
+
+    # Enqueue auto-resume job for timed pauses
+    if mode == 'timed'
+      begin
+        Captain::PauseExpiryJob.set(wait: duration_minutes.to_i.minutes).perform_later(self, additional_attributes['pause_nonce'])
+      rescue NameError
+        Rails.logger.warn('[CAPTAIN] PauseExpiryJob not available (enterprise not loaded)')
+      end
+    end
+  end
+
+  def resume_ai!
+    restore_mode = additional_attributes&.dig('pause_restore_mode')
+
+    if restore_mode.blank?
+      captain_inbox = inbox.captain_inbox if inbox.respond_to?(:captain_inbox)
+      restore_mode = captain_inbox&.copilot_default_mode.presence || 'draft'
+    end
+
+    restore_mode = 'draft' unless COPILOT_MODES.include?(restore_mode)
+
+    cleaned = (additional_attributes || {}).except('pause_mode', 'pause_expires_at', 'pause_restore_mode', 'pause_nonce')
+    cleaned['copilot_mode'] = restore_mode
+    update!(additional_attributes: cleaned)
+  end
+
+  def ai_paused?
+    copilot_off? && additional_attributes&.dig('pause_mode').present?
+  end
+
+  def pause_metadata
+    return nil unless ai_paused?
+
+    {
+      mode: additional_attributes['pause_mode'],
+      expires_at: additional_attributes['pause_expires_at'],
+      restore_mode: additional_attributes['pause_restore_mode']
+    }
+  end
+
   # Be aware: The precision of created_at and last_activity_at may differ from Ruby's Time precision.
   # Our DB column (see schema) stores timestamps with second-level precision (no microseconds), so
   # if you assign a Ruby Time with microseconds, the DB will truncate it. This may cause subtle differences
@@ -274,6 +340,13 @@ class Conversation < ApplicationRecord
     # rubocop:disable Rails/SkipsModelValidations
     update_column(:waiting_since, nil)
     # rubocop:enable Rails/SkipsModelValidations
+    clear_session_pause_on_resolve
+  end
+
+  def clear_session_pause_on_resolve
+    return unless ai_paused? && additional_attributes&.dig('pause_mode') == 'until_resolved'
+
+    resume_ai!
   end
 
   def ensure_snooze_until_reset
@@ -326,7 +399,9 @@ class Conversation < ApplicationRecord
   def allowed_keys?
     (
       previous_changes.keys.intersect?(list_of_keys) ||
-      (previous_changes['additional_attributes'].present? && previous_changes['additional_attributes'][1].keys.intersect?(%w[conversation_language]))
+      (previous_changes['additional_attributes'].present? && previous_changes['additional_attributes'][1].keys.intersect?(
+        %w[conversation_language copilot_mode pause_mode]
+      ))
     )
   end
 

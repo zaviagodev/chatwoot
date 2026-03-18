@@ -55,6 +55,13 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   def process_response
     return process_action('handoff') if handoff_requested?
 
+    # Guard: discard result if conversation was paused after job was enqueued
+    @conversation.reload
+    if @conversation.copilot_off?
+      Rails.logger.info("[CAPTAIN][ResponseBuilderJob] Discarding response — conversation #{@conversation.id} has copilot_mode=off")
+      return
+    end
+
     if copilot_mode_enabled? && @conversation.copilot_draft?
       store_and_broadcast_draft
     else

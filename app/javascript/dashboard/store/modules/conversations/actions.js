@@ -457,6 +457,23 @@ const actions = {
     }
   },
 
+  pauseConversationAi: async (
+    _,
+    { conversationId, pauseMode, pauseDurationMinutes }
+  ) => {
+    await ConversationApi.pauseAi(conversationId, {
+      pauseMode,
+      pauseDurationMinutes,
+    });
+    // No local mutation needed — ActionCable conversation.updated
+    // delivers updated additional_attributes via UPDATE_CONVERSATION
+  },
+
+  resumeConversationAi: async (_, conversationId) => {
+    await ConversationApi.resumeAi(conversationId);
+    // ActionCable handles state update
+  },
+
   sendEmailTranscript: async (_, { conversationId, email }) => {
     try {
       await ConversationApi.sendEmailTranscript({ conversationId, email });

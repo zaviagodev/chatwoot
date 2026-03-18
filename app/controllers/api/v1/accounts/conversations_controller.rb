@@ -68,6 +68,32 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     head :ok
   end
 
+  def pause_ai
+    unless copilot_mode_enabled?
+      return render json: { error: 'Captain copilot mode is not enabled' }, status: :unprocessable_entity
+    end
+
+    @conversation.pause_ai!(
+      mode: params.require(:pause_mode),
+      duration_minutes: params[:pause_duration_minutes]
+    )
+    head :ok
+  rescue ArgumentError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def resume_ai
+    unless copilot_mode_enabled?
+      return render json: { error: 'Captain copilot mode is not enabled' }, status: :unprocessable_entity
+    end
+    unless @conversation.ai_paused?
+      return render json: { error: 'Conversation AI is not paused' }, status: :unprocessable_entity
+    end
+
+    @conversation.resume_ai!
+    head :ok
+  end
+
   def transcript
     render json: { error: 'email param missing' }, status: :unprocessable_entity and return if params[:email].blank?
     return head :too_many_requests unless @conversation.account.within_email_rate_limit?
@@ -142,6 +168,12 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   private
+
+  def copilot_mode_enabled?
+    Enterprise::MessageTemplates::HookExecutionService::CAPTAIN_COPILOT_MODE_ENABLED
+  rescue NameError
+    false
+  end
 
   def permitted_update_params
     # TODO: Move the other conversation attributes to this method and remove specific endpoints for each attribute

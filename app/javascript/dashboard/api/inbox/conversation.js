@@ -96,6 +96,17 @@ class ConversationApi extends ApiClient {
     return axios.post(`${this.url}/${conversationId}/unmute`);
   }
 
+  pauseAi(conversationId, { pauseMode, pauseDurationMinutes }) {
+    return axios.post(`${this.url}/${conversationId}/pause_ai`, {
+      pause_mode: pauseMode,
+      pause_duration_minutes: pauseDurationMinutes,
+    });
+  }
+
+  resumeAi(conversationId) {
+    return axios.post(`${this.url}/${conversationId}/resume_ai`);
+  }
+
   meta({ inboxId, status, assigneeType, labels, teamId, conversationType }) {
     return axios.get(`${this.url}/meta`, {
       params: {

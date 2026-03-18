@@ -21,7 +21,8 @@ class Captain::Products::ManageService
       specs: product_data[:specs] || [],
       erp_company: product_data[:erp_company] || @assistant.erp_company,
       description_source: product_data.fetch(:description_source, 'auto'),
-      status: product_data.fetch(:status, 'active')
+      status: product_data.fetch(:status, 'active'),
+      option_groups: product_data[:option_groups] || []
     )
 
     # Use ERPNext pre-formatted text, fallback to local format
@@ -54,7 +55,8 @@ class Captain::Products::ManageService
       variants: new_variants,
       specs: product_data.fetch(:specs, product.specs),
       status: product_data.fetch(:status, product.status),
-      description_source: reset_source ? 'auto' : product_data.fetch(:description_source, product.description_source)
+      description_source: reset_source ? 'auto' : product_data.fetch(:description_source, product.description_source),
+      option_groups: product_data.fetch(:option_groups, product.option_groups)
     }
 
     product.assign_attributes(attrs)

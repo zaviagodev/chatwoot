@@ -10,6 +10,7 @@ json.item_group product.item_group
 json.image_url product.image_url
 json.variants product.variants
 json.specs product.specs
+json.option_groups product.option_groups
 json.formatted_text product.formatted_text
 json.description_source product.description_source
 json.status product.status

@@ -104,7 +104,8 @@ class Api::V1::Accounts::Captain::ProductsController < Api::V1::Accounts::BaseCo
       :description_source, :status,
       variants: [:item_code, :item_name, :image, :price, :stock_qty, :enabled,
                  :price_override, :description_override, { attributes: [:attribute, :value] }],
-      specs: [:label, :value]
+      specs: [:label, :value],
+      option_groups: [:name, { values: [] }]
     )
   end
 end

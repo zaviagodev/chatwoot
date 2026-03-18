@@ -11,6 +11,7 @@ import CaptainErpProxy from 'dashboard/api/captain/erpProxy';
 import ProductDetailHeader from 'dashboard/components-next/captain/pageComponents/product/ProductDetailHeader.vue';
 import ProductVariantsTable from 'dashboard/components-next/captain/pageComponents/product/ProductVariantsTable.vue';
 import ProductSidebarCards from 'dashboard/components-next/captain/pageComponents/product/ProductSidebarCards.vue';
+import OptionGroupsModal from 'dashboard/components-next/captain/pageComponents/product/OptionGroupsModal.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -40,6 +41,9 @@ const description = ref('');
 const variants = ref([]);
 const specs = ref([]);
 
+const optionGroups = ref([]);
+const showOptionsModal = ref(false);
+
 const isSaving = ref(false);
 const isResyncing = ref(false);
 const errors = ref({});
@@ -56,6 +60,7 @@ const initForm = p => {
   description.value = p.description || '';
   variants.value = JSON.parse(JSON.stringify(p.variants || []));
   specs.value = JSON.parse(JSON.stringify(p.specs || []));
+  optionGroups.value = JSON.parse(JSON.stringify(p.option_groups || []));
   errors.value = {};
 };
 
@@ -95,7 +100,8 @@ const isDirty = computed(() => {
     stockQty.value !== (p.stock_qty != null ? String(p.stock_qty) : '') ||
     description.value !== (p.description || '') ||
     JSON.stringify(variants.value) !== JSON.stringify(p.variants || []) ||
-    JSON.stringify(specs.value) !== JSON.stringify(p.specs || [])
+    JSON.stringify(specs.value) !== JSON.stringify(p.specs || []) ||
+    JSON.stringify(optionGroups.value) !== JSON.stringify(p.option_groups || [])
   );
 });
 
@@ -153,6 +159,7 @@ const handleSave = async () => {
     image: imageUrl.value || undefined,
     variants: variants.value,
     specs: specs.value,
+    option_groups: optionGroups.value,
     description_source: getDescriptionSource(descChanged),
   };
   try {
@@ -259,11 +266,110 @@ const handleResyncKeepLocal = () => {
 
 // --- Variant helpers ---
 const addVariant = () => {
-  variants.value.push({ item_name: '', item_code: '', price: '' });
+  variants.value.push({
+    item_name: '',
+    item_code: '',
+    price: '',
+    stock_qty: null,
+    enabled: true,
+    image: '',
+    description_override: '',
+    price_override: false,
+    attributes: [],
+  });
 };
 const removeVariant = index => variants.value.splice(index, 1);
 const updateVariant = ({ index, field, value }) => {
   variants.value[index][field] = value;
+};
+
+// --- Option groups: cartesian product + smart merge ---
+const cartesianProduct = groups => {
+  if (groups.length === 0) return [];
+  return groups.reduce(
+    (acc, group) =>
+      acc.flatMap(combo =>
+        group.values.map(val => [
+          ...combo,
+          { attribute: group.name, value: val },
+        ])
+      ),
+    [[]]
+  );
+};
+
+const variantMatchKey = attrs => {
+  if (!attrs?.length) return '';
+  return JSON.stringify(
+    [...attrs].sort((a, b) => a.attribute.localeCompare(b.attribute))
+  );
+};
+
+const applyOptionGroups = newGroups => {
+  optionGroups.value = newGroups;
+  if (newGroups.length === 0) return;
+
+  // Build lookup of existing variants by attribute key
+  const existingMap = new Map();
+  variants.value.forEach(v => {
+    const key = variantMatchKey(v.attributes);
+    if (key) existingMap.set(key, v);
+  });
+
+  // Generate cartesian product
+  const combos = cartesianProduct(newGroups);
+  const parentSku = itemCode.value || '';
+  const parentPriceNum = price.value ? Number(price.value) : null;
+
+  const generated = combos.map(attrs => {
+    const key = variantMatchKey(attrs);
+    const existing = existingMap.get(key);
+
+    if (existing) {
+      // Preserve existing variant, update attributes to canonical order
+      return { ...existing, attributes: attrs };
+    }
+
+    // New variant — auto-generate name and SKU
+    const nameParts = attrs.map(a => a.value);
+    const skuParts = attrs.map(a => a.value.toUpperCase().replace(/\s+/g, ''));
+    const autoSku = parentSku
+      ? `${parentSku}-${skuParts.join('-')}`
+      : skuParts.join('-');
+
+    return {
+      item_name: nameParts.join(' / '),
+      item_code: autoSku,
+      price: parentPriceNum ?? '',
+      stock_qty: null,
+      enabled: true,
+      image: '',
+      description_override: '',
+      price_override: false,
+      attributes: attrs,
+    };
+  });
+
+  // Keep manually-added variants (those without attribute-key match in generated set)
+  const generatedKeys = new Set(
+    generated.map(v => variantMatchKey(v.attributes))
+  );
+  const manualVariants = variants.value.filter(v => {
+    const key = variantMatchKey(v.attributes);
+    return !key || !generatedKeys.has(key);
+  });
+
+  // Only keep manual variants that weren't matched by the old option groups
+  const oldGroupNames = new Set(
+    (product.value?.option_groups || []).map(g => g.name)
+  );
+  const keptManual = manualVariants.filter(v => {
+    // Keep variants with no attributes, or attributes from non-option-group sources
+    if (!v.attributes?.length) return true;
+    return !v.attributes.every(a => oldGroupNames.has(a.attribute));
+  });
+
+  variants.value = [...generated, ...keptManual];
 };
 
 // --- Spec helpers ---
@@ -547,9 +653,20 @@ watch(imageUrl, val => {
             <!-- Variants section -->
             <ProductVariantsTable
               :variants="variants"
+              :parent-price="price"
+              :option-groups="optionGroups"
               @add="addVariant"
               @remove="removeVariant"
               @update:variant="updateVariant"
+              @manage-options="showOptionsModal = true"
+            />
+
+            <!-- Option groups modal -->
+            <OptionGroupsModal
+              v-model="showOptionsModal"
+              :option-groups="optionGroups"
+              :existing-variants="variants"
+              @apply="applyOptionGroups"
             />
           </div>
 

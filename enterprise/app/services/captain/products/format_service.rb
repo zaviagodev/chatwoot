@@ -72,6 +72,12 @@ class Captain::Products::FormatService
       parts = [name, price_str, stock_str].reject(&:blank?)
       lines << "  - #{parts.join(' | ')}"
       lines << "    #{attrs.join(', ')}" if attrs.any?
+
+      desc_override = v['description_override'] || v[:description_override]
+      lines << "    #{desc_override}" if desc_override.present?
+
+      img = v['image'] || v[:image]
+      lines << '    [has image]' if img.present?
     end
 
     if disabled.any?

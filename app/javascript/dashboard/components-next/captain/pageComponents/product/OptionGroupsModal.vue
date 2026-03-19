@@ -8,6 +8,7 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   optionGroups: { type: Array, default: () => [] },
   existingVariants: { type: Array, default: () => [] },
+  readOnly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue', 'apply']);
@@ -181,7 +182,7 @@ const handleCancel = () => {
               }}
             </label>
             <button
-              v-if="groups.length > 1"
+              v-if="groups.length > 1 && !readOnly"
               class="text-xs text-n-slate-9 hover:text-r-500"
               @click="removeGroup(gIdx)"
             >
@@ -200,6 +201,7 @@ const handleCancel = () => {
               :placeholder="
                 t('CAPTAIN_PRODUCTS.OPTION_GROUPS.NAME_PLACEHOLDER')
               "
+              :disabled="readOnly"
               class="!mb-0 w-full"
             />
             <datalist :id="`option-suggestions-${gIdx}`">
@@ -226,6 +228,7 @@ const handleCancel = () => {
               >
                 {{ val }}
                 <button
+                  v-if="!readOnly"
                   class="text-n-slate-9 hover:text-r-500 ml-0.5"
                   :aria-label="
                     t('CAPTAIN_PRODUCTS.OPTION_GROUPS.REMOVE_VALUE_ARIA', {
@@ -245,7 +248,7 @@ const handleCancel = () => {
                     : ''
                 "
                 class="flex-1 min-w-[80px] border-none outline-none bg-transparent text-sm text-n-slate-12 placeholder:text-n-slate-8 !p-0 !m-0 !ring-0"
-                :disabled="!group.name"
+                :disabled="!group.name || readOnly"
                 @keydown="handleTagKeydown($event, gIdx)"
               />
             </div>
@@ -255,9 +258,14 @@ const handleCancel = () => {
           </div>
         </div>
 
+        <!-- Read-only notice for ERP-synced products -->
+        <p v-if="readOnly" class="text-xs text-n-slate-9 italic">
+          {{ t('CAPTAIN_PRODUCTS.OPTION_GROUPS.READ_ONLY_HINT') }}
+        </p>
+
         <!-- Add another option button -->
         <button
-          v-if="canAddGroup"
+          v-else-if="canAddGroup"
           class="text-sm text-b-600 hover:text-b-700 font-medium"
           @click="addGroup"
         >
@@ -327,10 +335,15 @@ const handleCancel = () => {
         <Button
           variant="faded"
           color="slate"
-          :label="t('CAPTAIN_PRODUCTS.OPTION_GROUPS.CANCEL')"
+          :label="
+            readOnly
+              ? t('CAPTAIN_PRODUCTS.OPTION_GROUPS.CLOSE')
+              : t('CAPTAIN_PRODUCTS.OPTION_GROUPS.CANCEL')
+          "
           @click="handleCancel"
         />
         <Button
+          v-if="!readOnly"
           :label="t('CAPTAIN_PRODUCTS.OPTION_GROUPS.APPLY')"
           :disabled="!canApply"
           @click="handleApply"

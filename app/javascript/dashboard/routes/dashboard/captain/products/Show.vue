@@ -666,6 +666,7 @@ watch(imageUrl, val => {
               v-model="showOptionsModal"
               :option-groups="optionGroups"
               :existing-variants="variants"
+              :read-only="isErpSynced"
               @apply="applyOptionGroups"
             />
           </div>

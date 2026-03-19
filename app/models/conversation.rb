@@ -346,7 +346,21 @@ class Conversation < ApplicationRecord
   def clear_session_pause_on_resolve
     return unless ai_paused? && additional_attributes&.dig('pause_mode') == 'until_resolved'
 
-    resume_ai!
+    # Inline resume logic using update_columns to avoid triggering callbacks again
+    # (we're already inside after_update_commit from the resolve status change)
+    restore_mode = additional_attributes&.dig('pause_restore_mode')
+    if restore_mode.blank?
+      captain_inbox = inbox.captain_inbox if inbox.respond_to?(:captain_inbox)
+      restore_mode = captain_inbox&.copilot_default_mode.presence || 'draft'
+    end
+    restore_mode = 'draft' unless COPILOT_MODES.include?(restore_mode)
+
+    cleaned = (additional_attributes || {}).except('pause_mode', 'pause_expires_at', 'pause_restore_mode', 'pause_nonce')
+    cleaned['copilot_mode'] = restore_mode
+    self.additional_attributes = cleaned
+    # rubocop:disable Rails/SkipsModelValidations
+    update_columns(additional_attributes: cleaned)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def ensure_snooze_until_reset

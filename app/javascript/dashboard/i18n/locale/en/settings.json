@@ -734,7 +734,9 @@
       "REMOVE_VALUE_ARIA": "Remove {value}",
       "REMOVE_CONFIRM_MESSAGE": "{count} variants using \"{value}\" will be removed. Their stock and pricing data will be lost.",
       "REMOVE_CONFIRM": "Remove",
-      "REMOVE_CANCEL": "Keep"
+      "REMOVE_CANCEL": "Keep",
+      "READ_ONLY_HINT": "Options are managed in ERPNext. Re-sync to update.",
+      "CLOSE": "Close"
     },
     "TABLE": {
       "ENABLED": "Enabled",

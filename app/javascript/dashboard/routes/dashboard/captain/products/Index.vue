@@ -18,7 +18,6 @@ import InlineDescriptionEditor from 'dashboard/components-next/captain/pageCompo
 import AiEnrichPreview from 'dashboard/components-next/captain/pageComponents/product/AiEnrichPreview.vue';
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import VariantList from 'dashboard/components-next/captain/assistant/VariantList.vue';
-import ProductCreateDrawer from 'dashboard/components-next/captain/pageComponents/product/ProductCreateDrawer.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 
 const route = useRoute();
@@ -55,14 +54,6 @@ const showAddDialog = ref(false);
 const addProductsDialog = ref(null);
 const deleteProductDialog = ref(null);
 
-// Product create drawer state
-const showCreateDrawer = ref(false);
-
-const existingCategories = computed(() => {
-  const cats = products.value.map(p => p.item_group).filter(Boolean);
-  return [...new Set(cats)];
-});
-
 // Search & filter state
 const searchQuery = ref('');
 const debouncedSearch = ref('');
@@ -98,7 +89,10 @@ const filteredProducts = computed(() => {
 });
 
 const handleAddManually = () => {
-  showCreateDrawer.value = true;
+  router.push({
+    name: 'captain_product_new',
+    params: route.params,
+  });
 };
 
 const fetchProducts = (page = 1) => {
@@ -106,15 +100,6 @@ const fetchProducts = (page = 1) => {
     page,
     assistantId: selectedAssistantId.value,
   });
-};
-
-const handleDrawerClose = () => {
-  showCreateDrawer.value = false;
-};
-
-const handleDrawerSaved = () => {
-  showCreateDrawer.value = false;
-  fetchProducts();
 };
 
 // AI enrichment state
@@ -507,13 +492,6 @@ onMounted(() => {
       :assistant-id="selectedAssistantId"
       :existing-products="products"
       @close="handleAddDialogClose"
-    />
-    <ProductCreateDrawer
-      :is-open="showCreateDrawer"
-      :assistant-id="selectedAssistantId"
-      :existing-categories="existingCategories"
-      @close="handleDrawerClose"
-      @saved="handleDrawerSaved"
     />
     <DeleteDialog
       v-if="selectedProduct"

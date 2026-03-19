@@ -642,6 +642,8 @@
     },
     "DETAIL": {
       "BACK_TO_PRODUCTS": "Products",
+      "NEW_PRODUCT_TITLE": "New product",
+      "CREATE_PRODUCT": "Create product",
       "SAVE_CHANGES": "Save changes",
       "DELETE_PRODUCT": "Delete",
       "RESYNC": "Re-sync from Workspace",

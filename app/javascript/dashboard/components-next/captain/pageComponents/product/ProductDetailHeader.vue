@@ -11,6 +11,7 @@ const props = defineProps({
   isErpSynced: { type: Boolean, default: false },
   isResyncing: { type: Boolean, default: false },
   canSave: { type: Boolean, default: false },
+  isNew: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['save', 'delete', 'resync', 'back']);
@@ -81,7 +82,7 @@ const statusLabel = computed(() => {
         <!-- Right: Actions -->
         <div class="flex items-center gap-2 shrink-0">
           <Button
-            v-if="isErpSynced"
+            v-if="isErpSynced && !isNew"
             icon="i-lucide-refresh-cw"
             :label="
               isResyncing
@@ -96,6 +97,7 @@ const statusLabel = computed(() => {
             @click="emit('resync')"
           />
           <Button
+            v-if="!isNew"
             :label="t('CAPTAIN_PRODUCTS.DETAIL.DELETE_PRODUCT')"
             color="ruby"
             variant="faded"
@@ -103,7 +105,11 @@ const statusLabel = computed(() => {
             @click="emit('delete')"
           />
           <Button
-            :label="t('CAPTAIN_PRODUCTS.DETAIL.SAVE_CHANGES')"
+            :label="
+              isNew
+                ? t('CAPTAIN_PRODUCTS.DETAIL.CREATE_PRODUCT')
+                : t('CAPTAIN_PRODUCTS.DETAIL.SAVE_CHANGES')
+            "
             size="sm"
             :disabled="!isDirty || !canSave || isSaving"
             :is-loading="isSaving"

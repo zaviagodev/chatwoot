@@ -53,6 +53,12 @@ const assistantRoutes = [
     meta,
   },
   {
+    path: frontendURL('accounts/:accountId/captain/:assistantId/products/new'),
+    component: ProductDetailShow,
+    name: 'captain_product_new',
+    meta,
+  },
+  {
     path: frontendURL(
       'accounts/:accountId/captain/:assistantId/products/:productId'
     ),

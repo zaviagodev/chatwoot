@@ -22,7 +22,10 @@ const store = useStore();
 const { t } = useI18n();
 
 const selectedAssistantId = computed(() => Number(route.params.assistantId));
-const productId = computed(() => Number(route.params.productId));
+const isNewProduct = computed(() => route.name === 'captain_product_new');
+const productId = computed(() =>
+  isNewProduct.value ? null : Number(route.params.productId)
+);
 
 // --- Data + Form state ---
 const product = ref(null);
@@ -87,6 +90,7 @@ const canResync = computed(
 );
 
 const isDirty = computed(() => {
+  if (isNewProduct.value) return itemName.value.trim() !== '';
   if (!product.value) return false;
   const p = product.value;
   return (
@@ -141,25 +145,51 @@ const getDescriptionSource = descChanged => {
 };
 
 // --- Save ---
+const buildPayload = () => ({
+  assistantId: selectedAssistantId.value,
+  item_name: itemName.value,
+  item_code: itemCode.value || undefined,
+  item_group: itemGroup.value || undefined,
+  status: status.value,
+  price: Number(price.value),
+  currency: currency.value,
+  stock_qty: stockQty.value !== '' ? Number(stockQty.value) : null,
+  description: description.value || undefined,
+  image: imageUrl.value || undefined,
+  variants: variants.value,
+  specs: specs.value,
+  option_groups: optionGroups.value,
+});
+
 const handleSave = async () => {
   if (!validate()) return;
   isSaving.value = true;
+
+  if (isNewProduct.value) {
+    try {
+      const result = await store.dispatch(
+        'captainProducts/create',
+        buildPayload()
+      );
+      // Set product so isDirty=false and route guard won't block navigation
+      product.value = result;
+      initForm(result);
+      useAlert(t('CAPTAIN_PRODUCTS.DETAIL.SAVED'));
+      router.replace({
+        name: 'captain_product_detail',
+        params: { ...route.params, productId: result.id },
+      });
+    } catch {
+      useAlert(t('CAPTAIN_PRODUCTS.DETAIL.SAVE_ERROR'));
+    }
+    isSaving.value = false;
+    return;
+  }
+
   const descChanged = description.value !== (product.value?.description || '');
   const payload = {
-    assistantId: selectedAssistantId.value,
+    ...buildPayload(),
     id: productId.value,
-    item_name: itemName.value,
-    item_code: itemCode.value || undefined,
-    item_group: itemGroup.value || undefined,
-    status: status.value,
-    price: Number(price.value),
-    currency: currency.value,
-    stock_qty: stockQty.value !== '' ? Number(stockQty.value) : null,
-    description: description.value || undefined,
-    image: imageUrl.value || undefined,
-    variants: variants.value,
-    specs: specs.value,
-    option_groups: optionGroups.value,
     description_source: getDescriptionSource(descChanged),
   };
   try {
@@ -412,7 +442,12 @@ const handleKeydown = e => {
 };
 
 onMounted(() => {
-  fetchProduct();
+  if (isNewProduct.value) {
+    product.value = {};
+    isLoading.value = false;
+  } else {
+    fetchProduct();
+  }
   window.addEventListener('keydown', handleKeydown);
 });
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
@@ -432,13 +467,18 @@ watch(imageUrl, val => {
   <section class="flex flex-col w-full h-full overflow-hidden bg-n-surface-1">
     <ProductDetailHeader
       v-if="product"
-      :product-name="itemName || product.item_name"
+      :product-name="
+        isNewProduct
+          ? t('CAPTAIN_PRODUCTS.DETAIL.NEW_PRODUCT_TITLE')
+          : itemName || product.item_name
+      "
       :status="status"
       :is-dirty="isDirty"
       :is-saving="isSaving"
       :is-erp-synced="isErpSynced"
       :is-resyncing="isResyncing"
       :can-save="canSave"
+      :is-new="isNewProduct"
       @save="handleSave"
       @delete="handleDelete"
       @resync="handleResync"
@@ -503,7 +543,10 @@ watch(imageUrl, val => {
           <!-- LEFT COLUMN (60%) -->
           <div class="flex-1 lg:w-3/5 space-y-6">
             <!-- Source indicator -->
-            <div class="flex items-center gap-2 text-xs text-n-slate-10">
+            <div
+              v-if="!isNewProduct"
+              class="flex items-center gap-2 text-xs text-n-slate-10"
+            >
               <span
                 v-if="isErpSynced"
                 class="i-lucide-refresh-cw w-3.5 h-3.5"
@@ -631,7 +674,7 @@ watch(imageUrl, val => {
                   {{ t('CAPTAIN_PRODUCTS.DETAIL.SECTION_DESCRIPTION') }}
                 </h3>
                 <span
-                  v-if="product.description_source === 'ai'"
+                  v-if="!isNewProduct && product.description_source === 'ai'"
                   class="text-xs px-1.5 py-0.5 rounded bg-v-50 text-v-700 dark:bg-v-900/20 dark:text-v-300"
                 >
                   {{ t('CAPTAIN_PRODUCTS.DETAIL.DESCRIPTION_AI_TAG') }}

@@ -122,6 +122,7 @@ export const getConditionOptions = ({
   contacts,
   countries,
   customAttributes,
+  dayOfWeekOptions,
   inboxes,
   languages,
   labels,
@@ -152,6 +153,7 @@ export const getConditionOptions = ({
     message_type: messageTypeOptions,
     priority: priorityOptions,
     labels: generateConditionOptions(labels, 'title'),
+    current_day: dayOfWeekOptions || [],
   };
 
   return conditionFilterMaps[type];

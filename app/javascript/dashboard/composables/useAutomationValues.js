@@ -11,6 +11,7 @@ import {
 import {
   MESSAGE_CONDITION_VALUES,
   PRIORITY_CONDITION_VALUES,
+  DAY_OF_WEEK_CONDITION_VALUES,
 } from 'dashboard/constants/automation';
 
 /**
@@ -78,6 +79,13 @@ export default function useAutomationValues() {
     }))
   );
 
+  const dayOfWeekOptions = computed(() =>
+    DAY_OF_WEEK_CONDITION_VALUES.map(item => ({
+      id: item.id,
+      name: t(`AUTOMATION.DAY_OF_WEEK_TYPES.${item.i18nKey}`),
+    }))
+  );
+
   /**
    * Adds a translated "None" option to the beginning of a list
    * @param {Array} list - The list to add "None" to
@@ -108,6 +116,7 @@ export default function useAutomationValues() {
       statusFilterOptions: statusFilterOptions.value,
       priorityOptions: priorityOptions.value,
       messageTypeOptions: messageTypeOptions.value,
+      dayOfWeekOptions: dayOfWeekOptions.value,
       teams: teams.value,
       languages,
       countries,
@@ -139,6 +148,7 @@ export default function useAutomationValues() {
     statusFilterOptions,
     priorityOptions,
     messageTypeOptions,
+    dayOfWeekOptions,
     getConditionDropdownValues,
     getActionDropdownValues,
     agents,

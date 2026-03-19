@@ -53,6 +53,13 @@ export default {
     },
   },
   emits: ['update:modelValue', 'removeFilter', 'resetFilter'],
+  data() {
+    const vals = this.modelValue?.values || [];
+    return {
+      timeStart: Array.isArray(vals) ? vals[0] || '' : '',
+      timeEnd: Array.isArray(vals) ? vals[1] || '' : '',
+    };
+  },
   computed: {
     attributeKey: {
       get() {
@@ -124,6 +131,14 @@ export default {
     },
   },
   methods: {
+    updateTimeValues() {
+      const payload = this.modelValue || {};
+      const vals =
+        this.filterOperator === 'is_between'
+          ? [this.timeStart, this.timeEnd]
+          : [this.timeStart];
+      this.$emit('update:modelValue', { ...payload, values: vals });
+    },
     removeFilter() {
       this.$emit('removeFilter');
     },
@@ -245,6 +260,30 @@ export default {
               type="date"
               :editable="false"
               class="!mb-0 datepicker"
+            />
+          </div>
+          <div
+            v-else-if="inputType === 'time'"
+            class="multiselect-wrap--small flex items-center gap-2"
+          >
+            <input
+              v-model="timeStart"
+              type="time"
+              class="!mb-0 datepicker"
+              @change="updateTimeValues"
+            />
+            <span
+              v-if="filterOperator === 'is_between'"
+              class="text-sm text-n-slate-9"
+            >
+              –
+            </span>
+            <input
+              v-if="filterOperator === 'is_between'"
+              v-model="timeEnd"
+              type="time"
+              class="!mb-0 datepicker"
+              @change="updateTimeValues"
             />
           </div>
           <input

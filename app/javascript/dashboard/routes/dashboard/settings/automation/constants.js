@@ -3,6 +3,8 @@ import {
   OPERATOR_TYPES_2,
   OPERATOR_TYPES_3,
   OPERATOR_TYPES_6,
+  OPERATOR_TYPES_TIME,
+  OPERATOR_TYPES_DAY,
 } from './operators';
 
 export const AUTOMATIONS = {
@@ -73,6 +75,18 @@ export const AUTOMATIONS = {
         name: 'LABELS',
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'current_time',
+        name: 'CURRENT_TIME',
+        inputType: 'time',
+        filterOperators: OPERATOR_TYPES_TIME,
+      },
+      {
+        key: 'current_day',
+        name: 'CURRENT_DAY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_DAY,
       },
     ],
     actions: [
@@ -201,6 +215,18 @@ export const AUTOMATIONS = {
         name: 'LABELS',
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'current_time',
+        name: 'CURRENT_TIME',
+        inputType: 'time',
+        filterOperators: OPERATOR_TYPES_TIME,
+      },
+      {
+        key: 'current_day',
+        name: 'CURRENT_DAY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_DAY,
       },
     ],
     actions: [
@@ -334,6 +360,18 @@ export const AUTOMATIONS = {
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_3,
       },
+      {
+        key: 'current_time',
+        name: 'CURRENT_TIME',
+        inputType: 'time',
+        filterOperators: OPERATOR_TYPES_TIME,
+      },
+      {
+        key: 'current_day',
+        name: 'CURRENT_DAY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_DAY,
+      },
     ],
     actions: [
       {
@@ -460,6 +498,18 @@ export const AUTOMATIONS = {
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_3,
       },
+      {
+        key: 'current_time',
+        name: 'CURRENT_TIME',
+        inputType: 'time',
+        filterOperators: OPERATOR_TYPES_TIME,
+      },
+      {
+        key: 'current_day',
+        name: 'CURRENT_DAY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_DAY,
+      },
     ],
     actions: [
       {
@@ -575,6 +625,18 @@ export const AUTOMATIONS = {
         name: 'PRIORITY',
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'current_time',
+        name: 'CURRENT_TIME',
+        inputType: 'time',
+        filterOperators: OPERATOR_TYPES_TIME,
+      },
+      {
+        key: 'current_day',
+        name: 'CURRENT_DAY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_DAY,
       },
     ],
     actions: [

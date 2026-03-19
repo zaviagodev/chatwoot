@@ -26,15 +26,20 @@ class AutomationRules::ConditionsFilterService < FilterService
     return false unless rule_valid?
 
     @attribute_changed_query_filter = []
+    @time_based_query_filter = []
 
     @rule.conditions.each_with_index do |query_hash, current_index|
       @attribute_changed_query_filter << query_hash and next if query_hash['filter_operator'] == 'attribute_changed'
+      @time_based_query_filter << query_hash and next if query_hash['attribute_key'].in?(%w[current_time current_day])
 
       apply_filter(query_hash, current_index)
     end
 
     records = base_relation.where(@query_string, @filter_values.with_indifferent_access)
     records = perform_attribute_changed_filter(records) if @attribute_changed_query_filter.any?
+
+    return false if records.blank?
+    return false if @time_based_query_filter.any? && !time_based_conditions_match?
 
     records.any?
   rescue StandardError => e
@@ -179,6 +184,72 @@ class AutomationRules::ConditionsFilterService < FilterService
     else
       " tags.id #{filter_operation(query_hash, current_index)} #{query_operator} "
     end
+  end
+
+  # Evaluates current_time and current_day conditions against the current moment
+  # in the inbox's timezone (falls back to account timezone, then UTC).
+  # Follows the same post-SQL pattern as attribute_changed.
+  def time_based_conditions_match?
+    now = current_time_in_inbox_timezone
+
+    @time_based_query_filter.all? do |filter|
+      case filter['attribute_key']
+      when 'current_time'
+        evaluate_current_time(now, filter)
+      when 'current_day'
+        evaluate_current_day(now, filter)
+      else
+        true
+      end
+    end
+  end
+
+  def current_time_in_inbox_timezone
+    timezone = @conversation.inbox&.timezone.presence || @account.timezone.presence || 'UTC'
+    Time.zone.now.in_time_zone(timezone)
+  end
+
+  def evaluate_current_time(now, filter)
+    current_minutes = (now.hour * 60) + now.min
+    values = filter['values']
+
+    case filter['filter_operator']
+    when 'is_between'
+      start_minutes = time_string_to_minutes(values[0])
+      end_minutes = time_string_to_minutes(values[1])
+      if start_minutes <= end_minutes
+        current_minutes >= start_minutes && current_minutes <= end_minutes
+      else
+        # Overnight range (e.g., 18:00 - 09:00)
+        current_minutes >= start_minutes || current_minutes <= end_minutes
+      end
+    when 'is_greater_than'
+      current_minutes > time_string_to_minutes(values[0])
+    when 'is_less_than'
+      current_minutes < time_string_to_minutes(values[0])
+    else
+      true
+    end
+  end
+
+  def evaluate_current_day(now, filter)
+    current_day = now.strftime('%A').downcase
+    days = filter['values'].map(&:downcase)
+
+    case filter['filter_operator']
+    when 'equal_to'
+      days.include?(current_day)
+    when 'not_equal_to'
+      days.exclude?(current_day)
+    else
+      true
+    end
+  end
+
+  # Converts "HH:MM" string to minutes since midnight
+  def time_string_to_minutes(time_str)
+    hours, minutes = time_str.split(':').map(&:to_i)
+    (hours * 60) + (minutes || 0)
   end
 
   private

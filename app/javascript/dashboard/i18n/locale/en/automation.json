@@ -164,6 +164,15 @@
       "HIGH": "High",
       "URGENT": "Urgent"
     },
+    "DAY_OF_WEEK_TYPES": {
+      "MONDAY": "Monday",
+      "TUESDAY": "Tuesday",
+      "WEDNESDAY": "Wednesday",
+      "THURSDAY": "Thursday",
+      "FRIDAY": "Friday",
+      "SATURDAY": "Saturday",
+      "SUNDAY": "Sunday"
+    },
     "ATTRIBUTES": {
       "MESSAGE_TYPE": "Message Type",
       "MESSAGE_CONTAINS": "Message Contains",
@@ -179,7 +188,9 @@
       "ASSIGNEE_NAME": "Assignee",
       "TEAM_NAME": "Team",
       "PRIORITY": "Priority",
-      "LABELS": "Labels"
+      "LABELS": "Labels",
+      "CURRENT_TIME": "Current Time",
+      "CURRENT_DAY": "Current Day"
     }
   }
 }

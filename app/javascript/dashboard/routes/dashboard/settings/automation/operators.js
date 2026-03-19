@@ -89,6 +89,32 @@ export const OPERATOR_TYPES_5 = [
   },
 ];
 
+export const OPERATOR_TYPES_TIME = [
+  {
+    value: 'is_between',
+    label: 'Is between',
+  },
+  {
+    value: 'is_greater_than',
+    label: 'Is after',
+  },
+  {
+    value: 'is_less_than',
+    label: 'Is before',
+  },
+];
+
+export const OPERATOR_TYPES_DAY = [
+  {
+    value: 'equal_to',
+    label: 'Equal to',
+  },
+  {
+    value: 'not_equal_to',
+    label: 'Not equal to',
+  },
+];
+
 export const OPERATOR_TYPES_6 = [
   {
     value: 'equal_to',

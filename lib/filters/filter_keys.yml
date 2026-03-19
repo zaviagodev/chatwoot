@@ -9,7 +9,7 @@
 #   - Key (attribute_name)
 #     - attribute_type: "standard" : supported ["standard", "additional_attributes (only for conversations and messages)"]
 #     - data_type: "text" :  supported ["text", "text_case_insensitive", "number", "boolean", "labels", "date", "link"]
-#     - filter_operators: ["equal_to", "not_equal_to", "contains", "does_not_contain", "is_present", "is_not_present", "is_greater_than", "is_less_than", "days_before", "starts_with"]
+#     - filter_operators: ["equal_to", "not_equal_to", "contains", "does_not_contain", "is_present", "is_not_present", "is_greater_than", "is_less_than", "days_before", "starts_with", "is_between"]
 
 ### ----- Conversation Filters ----- ###
 
@@ -108,6 +108,19 @@ conversations:
       - "is_greater_than"
       - "is_less_than"
       - "days_before"
+  current_time:
+    attribute_type: "standard"
+    data_type: "text"
+    filter_operators:
+      - "is_between"
+      - "is_greater_than"
+      - "is_less_than"
+  current_day:
+    attribute_type: "standard"
+    data_type: "text"
+    filter_operators:
+      - "equal_to"
+      - "not_equal_to"
   mail_subject:
     attribute_type: "additional_attributes"
     data_type: "text"

@@ -48,6 +48,16 @@ export const MESSAGE_CONDITION_VALUES = [
   },
 ];
 
+export const DAY_OF_WEEK_CONDITION_VALUES = [
+  { id: 'monday', name: 'Monday', i18nKey: 'MONDAY' },
+  { id: 'tuesday', name: 'Tuesday', i18nKey: 'TUESDAY' },
+  { id: 'wednesday', name: 'Wednesday', i18nKey: 'WEDNESDAY' },
+  { id: 'thursday', name: 'Thursday', i18nKey: 'THURSDAY' },
+  { id: 'friday', name: 'Friday', i18nKey: 'FRIDAY' },
+  { id: 'saturday', name: 'Saturday', i18nKey: 'SATURDAY' },
+  { id: 'sunday', name: 'Sunday', i18nKey: 'SUNDAY' },
+];
+
 export const PRIORITY_CONDITION_VALUES = [
   {
     id: 'nil',

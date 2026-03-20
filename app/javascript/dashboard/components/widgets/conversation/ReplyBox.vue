@@ -18,6 +18,9 @@ import CopilotEditorSection from './CopilotEditorSection.vue';
 import MessageSignatureMissingAlert from './MessageSignatureMissingAlert.vue';
 import ReplyBoxBanner from './ReplyBoxBanner.vue';
 import QuotedEmailPreview from './QuotedEmailPreview.vue';
+import ProductPickerPanel from 'dashboard/components-next/message/ProductPickerPanel.vue';
+import CardPickerPanel from 'dashboard/components-next/message/CardPickerPanel.vue';
+import OrderBuilderPanel from 'dashboard/components-next/message/OrderBuilderPanel.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import AudioRecorder from 'dashboard/components/widgets/WootWriter/AudioRecorder.vue';
@@ -77,6 +80,9 @@ export default {
     QuotedEmailPreview,
     CopilotEditorSection,
     CopilotReplyBottomPanel,
+    ProductPickerPanel,
+    CardPickerPanel,
+    OrderBuilderPanel,
   },
   mixins: [inboxMixin, fileUploadMixin, keyboardEventListenerMixins],
   props: {
@@ -140,6 +146,10 @@ export default {
       newConversationModalActive: false,
       showArticleSearchPopover: false,
       hasRecordedAudio: false,
+      showProductPickerPanel: false,
+      showCardPickerPanel: false,
+      showOrderBuilderPanel: false,
+      productSendPending: false,
     };
   },
   computed: {
@@ -153,7 +163,16 @@ export default {
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
       copilotDraft: 'getCopilotDraft',
       copilotDraftRejectedFor: 'getCopilotDraftRejectedFor',
+      copilotAssistant: 'getCopilotAssistant',
     }),
+    showProductsButton() {
+      return (
+        this.isALineChannel &&
+        !this.isPrivate &&
+        !!this.copilotAssistant?.id &&
+        !!this.copilotAssistant?.erp_tenant_key
+      );
+    },
     showDraftRejectedBanner() {
       return (
         this.copilotDraftRejectedFor === this.conversationId &&
@@ -525,6 +544,9 @@ export default {
     emitter.on(BUS_EVENTS.SET_REPLY_EDITOR_CONTENT, this.setEditorContent);
     emitter.on(CMD_AI_ASSIST, this.executeCopilotAction);
     emitter.on(BUS_EVENTS.COPILOT_DRAFT_ERROR, this.onCopilotDraftError);
+    if (this.showProductsButton) {
+      this.$store.dispatch('getCardDesigns');
+    }
   },
   unmounted() {
     document.removeEventListener('paste', this.onPaste);
@@ -746,6 +768,80 @@ export default {
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
     },
+    toggleProductPickerPanel() {
+      this.showOrderBuilderPanel = false;
+      this.showCardPickerPanel = false;
+      this.showProductPickerPanel = !this.showProductPickerPanel;
+    },
+    toggleCardPickerPanel() {
+      this.showOrderBuilderPanel = false;
+      this.showProductPickerPanel = false;
+      this.showCardPickerPanel = !this.showCardPickerPanel;
+    },
+    toggleOrderBuilderPanel() {
+      this.showProductPickerPanel = false;
+      this.showCardPickerPanel = false;
+      this.showOrderBuilderPanel = !this.showOrderBuilderPanel;
+    },
+    async sendProductCard(payload) {
+      this.productSendPending = true;
+      const { product } = payload;
+      const messagePayload = {
+        conversationId: this.currentChat.id,
+        message: `${product.item_name} - ${product.currency} ${product.price}`,
+        private: false,
+        sender: this.sender,
+        contentAttributes: { product },
+        contentType: 'cards',
+      };
+      const ok = await this.sendMessage(messagePayload);
+      this.productSendPending = false;
+      if (ok) this.showProductPickerPanel = false;
+    },
+    async sendDesignedCard(payload) {
+      this.productSendPending = true;
+      let messagePayload;
+      if (payload.products && payload.products.length > 1) {
+        const names = payload.products.map(p => p.item_name).join(', ');
+        messagePayload = {
+          conversationId: this.currentChat.id,
+          message: `Products: ${names}`.substring(0, 400),
+          private: false,
+          sender: this.sender,
+          contentAttributes: {
+            products: payload.products,
+            design_id: payload.design_id,
+          },
+          contentType: 'cards',
+        };
+      } else {
+        const { product, design_id } = payload;
+        messagePayload = {
+          conversationId: this.currentChat.id,
+          message: `${product.item_name} - ${product.currency} ${product.price}`,
+          private: false,
+          sender: this.sender,
+          contentAttributes: { product, design_id },
+          contentType: 'cards',
+        };
+      }
+      const ok = await this.sendMessage(messagePayload);
+      this.productSendPending = false;
+      if (ok) this.showCardPickerPanel = false;
+    },
+    async sendOrderCheckoutLink(messageText) {
+      const messagePayload = {
+        conversationId: this.currentChat.id,
+        message: messageText,
+        private: false,
+        sender: this.sender,
+      };
+      const ok = await this.sendMessage(messagePayload);
+      if (ok) {
+        this.showOrderBuilderPanel = false;
+        useAlert('Checkout link sent');
+      }
+    },
     confirmOnSendReply() {
       if (this.isReplyButtonDisabled) {
         return;
@@ -825,10 +921,12 @@ export default {
         emitter.emit(BUS_EVENTS.MESSAGE_SENT);
         this.removeFromDraft();
         this.sendMessageAnalyticsData(messagePayload.private);
+        return true;
       } catch (error) {
         const errorMessage =
           error?.response?.data?.error || this.$t('CONVERSATION.MESSAGE_ERROR');
         useAlert(errorMessage);
+        return false;
       }
     },
     async onSendWhatsAppReply(messagePayload) {
@@ -1299,6 +1397,37 @@ export default {
       @toggle-copilot="copilot.toggleEditor"
       @execute-copilot-action="executeCopilotAction"
     />
+    <ProductPickerPanel
+      v-if="showProductPickerPanel"
+      :assistant-id="copilotAssistant.id"
+      :erp-tenant-key="copilotAssistant.erp_tenant_key"
+      :is-sending="productSendPending"
+      @close="showProductPickerPanel = false"
+      @send="sendProductCard"
+    />
+    <CardPickerPanel
+      v-if="showCardPickerPanel"
+      :assistant-id="copilotAssistant.id"
+      :erp-tenant-key="copilotAssistant.erp_tenant_key"
+      :is-sending="productSendPending"
+      @close="showCardPickerPanel = false"
+      @send="sendDesignedCard"
+    />
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out motion-reduce:duration-0 motion-reduce:transition-none"
+      enter-from-class="opacity-0 translate-y-2 scale-[0.98]"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition-all duration-200 ease-in motion-reduce:duration-0 motion-reduce:transition-none"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-2 scale-[0.98]"
+    >
+      <OrderBuilderPanel
+        v-if="showOrderBuilderPanel"
+        :assistant-id="copilotAssistant.id"
+        @close="showOrderBuilderPanel = false"
+        @send="sendOrderCheckoutLink"
+      />
+    </Transition>
     <ArticleSearchPopover
       v-if="showArticleSearchPopover && connectedPortalSlug"
       :selected-portal-slug="connectedPortalSlug"
@@ -1464,11 +1593,32 @@ export default {
         :message="message"
         :portal-slug="connectedPortalSlug"
         :new-conversation-modal-active="newConversationModalActive"
+        :show-products-button="
+          showProductsButton &&
+          !showProductPickerPanel &&
+          !showCardPickerPanel &&
+          !showOrderBuilderPanel
+        "
+        :show-cards-button="
+          showProductsButton &&
+          !showCardPickerPanel &&
+          !showProductPickerPanel &&
+          !showOrderBuilderPanel
+        "
+        :show-order-builder-button="
+          showProductsButton &&
+          !showOrderBuilderPanel &&
+          !showProductPickerPanel &&
+          !showCardPickerPanel
+        "
         @select-whatsapp-template="openWhatsappTemplateModal"
         @select-content-template="openContentTemplateModal"
         @replace-text="replaceText"
         @toggle-insert-article="toggleInsertArticle"
         @toggle-quoted-reply="toggleQuotedReply"
+        @toggle-products-picker="toggleProductPickerPanel"
+        @toggle-cards-picker="toggleCardPickerPanel"
+        @toggle-order-builder="toggleOrderBuilderPanel"
       />
     </Transition>
 

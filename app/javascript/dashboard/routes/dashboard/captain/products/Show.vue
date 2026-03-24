@@ -49,6 +49,7 @@ const showOptionsModal = ref(false);
 
 const isSaving = ref(false);
 const isResyncing = ref(false);
+const justCreated = ref(false);
 const errors = ref({});
 
 const initForm = p => {
@@ -171,7 +172,8 @@ const handleSave = async () => {
         'captainProducts/create',
         buildPayload()
       );
-      // Set product so isDirty=false and route guard won't block navigation
+      // Flag so route guard won't block navigation after successful create
+      justCreated.value = true;
       product.value = result;
       initForm(result);
       useAlert(t('CAPTAIN_PRODUCTS.DETAIL.SAVED'));
@@ -414,12 +416,12 @@ const discardDialogRef = ref(null);
 const pendingNavigation = ref(null);
 
 onBeforeRouteLeave((_to, _from, next) => {
-  if (isDirty.value) {
-    pendingNavigation.value = next;
-    discardDialogRef.value?.open();
+  if (justCreated.value || !isDirty.value) {
+    next();
     return;
   }
-  next();
+  pendingNavigation.value = next;
+  discardDialogRef.value?.open();
 });
 
 const handleDiscard = () => {

@@ -678,6 +678,7 @@
       "SOURCE_MANUAL": "Added manually",
       "NO_VARIANTS": "No variants. Add variants like sizes or colors.",
       "ADD_VARIANT": "Add variant",
+      "SAVE_BEFORE_EDIT": "Save product first to edit variant details",
       "NO_SPECS": "No specifications added.",
       "ADD_SPEC": "Add specification",
       "ADD_IMAGE_URL": "Add image URL",

@@ -47,6 +47,9 @@ const sortedVariants = computed(() => {
 });
 
 // --- Navigation ---
+const canEditVariant = variant =>
+  !!route.params.productId && !!variant.item_code;
+
 const navigateToVariant = index => {
   router.push({
     name: 'captain_variant_detail',
@@ -581,8 +584,22 @@ const isEditing = (originalIndex, col) => {
             <td class="py-2">
               <div class="flex items-center gap-1">
                 <button
-                  class="p-1.5 rounded hover:bg-n-alpha-2 text-n-slate-9 hover:text-n-slate-12 opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="navigateToVariant(variant._originalIndex)"
+                  class="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  :class="
+                    canEditVariant(variant)
+                      ? 'hover:bg-n-alpha-2 text-n-slate-9 hover:text-n-slate-12 cursor-pointer'
+                      : 'text-n-slate-6 cursor-not-allowed'
+                  "
+                  :title="
+                    canEditVariant(variant)
+                      ? ''
+                      : t('CAPTAIN_PRODUCTS.DETAIL.SAVE_BEFORE_EDIT')
+                  "
+                  :disabled="!canEditVariant(variant)"
+                  @click="
+                    canEditVariant(variant) &&
+                      navigateToVariant(variant._originalIndex)
+                  "
                 >
                   <span class="i-lucide-pencil w-4 h-4" />
                 </button>

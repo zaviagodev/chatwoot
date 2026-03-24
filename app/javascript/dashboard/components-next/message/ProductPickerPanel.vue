@@ -154,7 +154,7 @@ const sendProduct = () => {
     item_name: product.item_name,
     price: product.price,
     currency: product.currency || 'THB',
-    image_url: product.image_url || null,
+    image_url: product.image_url || product.image || null,
     storefront_url: buildStorefrontUrl(product.item_code),
     stock_status: product.stock_status || 'unknown',
   };

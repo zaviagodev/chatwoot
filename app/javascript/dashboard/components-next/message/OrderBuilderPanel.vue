@@ -185,8 +185,8 @@ const addToOrder = product => {
       item_name: product.item_name,
       price: product.price,
       currency: product.currency || 'THB',
-      image_url: product.image_url,
-      stock_status: product.stock_status,
+      image_url: product.image_url || product.image || null,
+      stock_status: product.stock_status || 'unknown',
       qty: 1,
     });
   }

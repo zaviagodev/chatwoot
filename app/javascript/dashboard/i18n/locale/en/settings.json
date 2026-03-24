@@ -681,7 +681,9 @@
       "SAVE_BEFORE_EDIT": "Save product first to edit variant details",
       "NO_SPECS": "No specifications added.",
       "ADD_SPEC": "Add specification",
-      "ADD_IMAGE_URL": "Add image URL",
+      "ADD_IMAGE_URL": "Upload image",
+      "UPLOADING_IMAGE": "Uploading...",
+      "UPLOAD_ERROR": "Failed to upload image",
       "UNSAVED_DOT_ARIA": "Unsaved changes",
       "VARIANT_DETAIL": {
         "BREADCRUMB_VARIANTS": "Variants",

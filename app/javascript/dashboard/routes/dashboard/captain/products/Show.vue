@@ -463,6 +463,36 @@ watch(imageUrl, val => {
     debouncedImageUrl.value = val;
   }, 500);
 });
+
+// --- Image upload ---
+const imageFileInput = ref(null);
+const isUploading = ref(false);
+
+const openImagePicker = () => imageFileInput.value?.click();
+
+const handleImageFileSelect = async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  isUploading.value = true;
+  try {
+    const { data } = await CaptainProductsAPI.uploadImage({
+      assistantId: selectedAssistantId.value,
+      file,
+    });
+    imageUrl.value = data.url;
+    debouncedImageUrl.value = data.url;
+  } catch {
+    useAlert(t('CAPTAIN_PRODUCTS.DETAIL.UPLOAD_ERROR'));
+  } finally {
+    isUploading.value = false;
+    if (imageFileInput.value) imageFileInput.value.value = '';
+  }
+};
+
+const clearImage = () => {
+  imageUrl.value = '';
+  debouncedImageUrl.value = '';
+};
 </script>
 
 <template>
@@ -640,7 +670,7 @@ watch(imageUrl, val => {
               </h3>
               <div
                 v-if="debouncedImageUrl"
-                class="w-60 h-60 rounded-lg overflow-hidden bg-n-alpha-2 mb-3"
+                class="relative w-60 h-60 rounded-lg overflow-hidden bg-n-alpha-2 mb-3 group"
               >
                 <img
                   :src="debouncedImageUrl"
@@ -648,18 +678,68 @@ watch(imageUrl, val => {
                   class="w-full h-full object-cover"
                   @error="$event.target.classList.add('hidden')"
                 />
+                <button
+                  type="button"
+                  class="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="clearImage"
+                >
+                  <svg
+                    class="size-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </div>
-              <div
+              <button
                 v-else
-                class="w-60 h-16 rounded-lg border-2 border-dashed border-n-slate-4 flex items-center justify-center mb-3"
+                type="button"
+                :disabled="isUploading"
+                class="w-60 h-20 rounded-lg border-2 border-dashed border-n-slate-5 hover:border-n-blue-7 flex flex-col items-center justify-center gap-1 text-n-slate-9 hover:text-n-blue-11 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait mb-3"
+                @click="openImagePicker"
               >
-                <span class="text-xs text-n-slate-9">
-                  {{ t('CAPTAIN_PRODUCTS.DETAIL.ADD_IMAGE_URL') }}
-                </span>
-              </div>
-              <label class="text-sm text-n-slate-12 block mb-1">
-                {{ t('CAPTAIN_PRODUCTS.FORM.IMAGE_LABEL') }}
-              </label>
+                <svg
+                  v-if="isUploading"
+                  class="size-5 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <svg
+                  v-else
+                  class="size-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span class="text-xs">{{
+                  isUploading
+                    ? t('CAPTAIN_PRODUCTS.DETAIL.UPLOADING_IMAGE')
+                    : t('CAPTAIN_PRODUCTS.DETAIL.ADD_IMAGE_URL')
+                }}</span>
+              </button>
+              <input
+                ref="imageFileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleImageFileSelect"
+              />
+              <label class="text-sm text-n-slate-12 block mb-1">{{
+                t('CAPTAIN_PRODUCTS.FORM.IMAGE_LABEL')
+              }}</label>
               <Input
                 v-model="imageUrl"
                 :placeholder="t('CAPTAIN_PRODUCTS.FORM.IMAGE_PLACEHOLDER')"

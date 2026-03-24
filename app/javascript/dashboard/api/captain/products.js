@@ -46,6 +46,18 @@ class CaptainProducts extends ApiClient {
       { text }
     );
   }
+
+  uploadImage({ assistantId, file }) {
+    const formData = new FormData();
+    formData.append('image', file);
+    return axios.post(
+      `${this.url}/${assistantId}/products/upload_image`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+  }
 }
 
 export default new CaptainProducts();

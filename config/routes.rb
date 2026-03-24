@@ -77,6 +77,7 @@ Rails.application.routes.draw do
                   post :sync
                   get :sync_status
                   post :provision_tools
+                  post :upload_image
                 end
                 member do
                   post :enrich

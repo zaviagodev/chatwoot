@@ -5,6 +5,8 @@ class Captain::Product < ApplicationRecord
   belongs_to :assistant, class_name: 'Captain::Assistant'
   has_many :responses, class_name: 'Captain::AssistantResponse',
            as: :documentable, dependent: :destroy
+  has_many :reviews, class_name: 'Captain::Review',
+           foreign_key: :captain_product_id, dependent: :nullify
 
   validates :item_code, presence: true,
             uniqueness: { scope: [:account_id, :assistant_id], message: 'already exists for this assistant' }

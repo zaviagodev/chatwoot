@@ -83,6 +83,17 @@ class Api::V1::Accounts::Captain::ProductsController < Api::V1::Accounts::BaseCo
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def upload_image
+    return render json: { error: 'No image provided' }, status: :unprocessable_entity unless params[:image].present?
+
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: params[:image].tempfile,
+      filename: params[:image].original_filename,
+      content_type: params[:image].content_type
+    )
+    render json: { url: url_for(blob) }
+  end
+
   private
 
   def set_assistant

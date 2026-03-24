@@ -19,7 +19,7 @@ class Captain::Products::ManageService
       image_url: product_data[:image],
       variants: product_data[:variants] || [],
       specs: product_data[:specs] || [],
-      erp_company: product_data[:erp_company] || @assistant.erp_company,
+      erp_company: product_data[:description_source] == 'manual' ? nil : (product_data[:erp_company] || @assistant.erp_company),
       description_source: product_data.fetch(:description_source, 'auto'),
       status: product_data.fetch(:status, 'active'),
       option_groups: product_data[:option_groups] || []

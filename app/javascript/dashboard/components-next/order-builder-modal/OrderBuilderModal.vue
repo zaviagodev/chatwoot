@@ -24,6 +24,7 @@ const props = defineProps({
   assistantId: { type: Number, required: true },
   lineUserId: { type: String, default: '' },
   contactName: { type: String, default: '' },
+  initialState: { type: Object, default: null },
 });
 
 const emit = defineEmits(['close', 'send']);
@@ -379,39 +380,6 @@ function onKeydown(e) {
   }
 }
 
-// Lifecycle
-onMounted(() => {
-  nextTick(() => {
-    isVisible.value = true;
-    setTimeout(() => {
-      catalogRef.value?.focusSearch();
-    }, 250);
-  });
-  document.addEventListener('keydown', onKeydown);
-  if (props.lineUserId) {
-    lookupLineCustomer();
-  } else {
-    deliveryState.value = 'no_line';
-    addressForm.value.name = props.contactName || '';
-  }
-});
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', onKeydown);
-  if (lookupController) lookupController.abort();
-  if (autoCloseTimer) clearTimeout(autoCloseTimer);
-  // Clear all pending checkmark animation timers
-  recentlyAdded.value.forEach(timeoutId => clearTimeout(timeoutId));
-  recentlyAdded.value = new Map();
-});
-
-// Backdrop click
-function onBackdropClick(e) {
-  if (e.target === e.currentTarget) {
-    requestClose();
-  }
-}
-
 // State snapshot for per-conversation persistence
 function getState() {
   return {
@@ -451,6 +419,41 @@ function restoreState(saved) {
 }
 
 defineExpose({ getState, restoreState });
+
+// Lifecycle
+onMounted(() => {
+  nextTick(() => {
+    isVisible.value = true;
+    setTimeout(() => {
+      catalogRef.value?.focusSearch();
+    }, 250);
+  });
+  document.addEventListener('keydown', onKeydown);
+  if (props.initialState) {
+    restoreState(props.initialState);
+  } else if (props.lineUserId) {
+    lookupLineCustomer();
+  } else {
+    deliveryState.value = 'no_line';
+    addressForm.value.name = props.contactName || '';
+  }
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown);
+  if (lookupController) lookupController.abort();
+  if (autoCloseTimer) clearTimeout(autoCloseTimer);
+  // Clear all pending checkmark animation timers
+  recentlyAdded.value.forEach(timeoutId => clearTimeout(timeoutId));
+  recentlyAdded.value = new Map();
+});
+
+// Backdrop click
+function onBackdropClick(e) {
+  if (e.target === e.currentTarget) {
+    requestClose();
+  }
+}
 </script>
 
 <template>

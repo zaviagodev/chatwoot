@@ -475,17 +475,6 @@ export default {
         this.generationState.reset();
         // Clear any stale copilot draft from previous conversation
         this.$store.dispatch('clearCopilotDraft');
-
-        // Restore order builder state for the new conversation if it exists
-        const savedState = this.orderBuilderStates[conversation.id];
-        if (savedState) {
-          this.showOrderBuilderPanel = true;
-          this.$nextTick(() => {
-            if (this.$refs.orderBuilderModal) {
-              this.$refs.orderBuilderModal.restoreState(savedState);
-            }
-          });
-        }
       }
 
       if (this.isOnPrivateNote) {
@@ -806,6 +795,11 @@ export default {
     toggleOrderBuilderPanel() {
       this.showProductPickerPanel = false;
       this.showCardPickerPanel = false;
+      // Save state before closing so it can be restored on re-open
+      if (this.showOrderBuilderPanel && this.$refs.orderBuilderModal) {
+        this.orderBuilderStates[this.currentChat.id] =
+          this.$refs.orderBuilderModal.getState();
+      }
       this.showOrderBuilderPanel = !this.showOrderBuilderPanel;
     },
     closeOrderBuilder() {
@@ -1444,6 +1438,7 @@ export default {
       :assistant-id="copilotAssistant.id"
       :line-user-id="contactLineUserId"
       :contact-name="currentContactName"
+      :initial-state="orderBuilderStates[currentChat.id] || null"
       @close="closeOrderBuilder"
       @send="sendOrderCheckoutLink"
     />

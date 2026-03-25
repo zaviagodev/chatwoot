@@ -462,10 +462,13 @@ export default {
         // This prevents overwriting user input (e.g., CC/BCC fields) when performing actions
         // like self-assign or other updates that do not actually change the conversation context
         this.setCCAndToEmailsFromLastChat();
-        // Save order builder state before unmounting
+        // Save order builder state before unmounting (always minimized on return)
         if (this.showOrderBuilderPanel && this.$refs.orderBuilderModal) {
-          this.orderBuilderStates[oldConversation.id] =
-            this.$refs.orderBuilderModal.getState();
+          const state = this.$refs.orderBuilderModal.getState();
+          if (state.cartItems && state.cartItems.length > 0) {
+            state.isMinimized = true;
+            this.orderBuilderStates[oldConversation.id] = state;
+          }
         }
         this.showOrderBuilderPanel = false;
         // Reset Copilot editor state (includes cancelling ongoing generation)
@@ -475,6 +478,11 @@ export default {
         this.generationState.reset();
         // Clear any stale copilot draft from previous conversation
         this.$store.dispatch('clearCopilotDraft');
+
+        // Show minimized pill if the new conversation has saved order state
+        if (this.orderBuilderStates[conversation.id]) {
+          this.showOrderBuilderPanel = true;
+        }
       }
 
       if (this.isOnPrivateNote) {

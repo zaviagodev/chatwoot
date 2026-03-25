@@ -25,6 +25,7 @@
       "does_not_contain": "Does not contain",
       "is_present": "Is present",
       "is_not_present": "Is not present",
+      "is_between": "Is between",
       "is_greater_than": "Is greater than",
       "is_less_than": "Is lesser than",
       "days_before": "Is x days before",

@@ -461,6 +461,8 @@ export default {
         // This prevents overwriting user input (e.g., CC/BCC fields) when performing actions
         // like self-assign or other updates that do not actually change the conversation context
         this.setCCAndToEmailsFromLastChat();
+        // Reset order builder modal when switching conversations
+        this.showOrderBuilderPanel = false;
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
         this.copilot.clearDraftHistory();

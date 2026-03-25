@@ -411,6 +411,46 @@ function onBackdropClick(e) {
     requestClose();
   }
 }
+
+// State snapshot for per-conversation persistence
+function getState() {
+  return {
+    cartItems: JSON.parse(JSON.stringify(cartItems.value)),
+    currentStep: currentStep.value,
+    completedSteps: [...completedSteps.value],
+    isMinimized: isMinimized.value,
+    deliveryState: deliveryState.value,
+    customerData: customerData.value
+      ? JSON.parse(JSON.stringify(customerData.value))
+      : null,
+    selectedAddress: selectedAddress.value,
+    addressForm: { ...addressForm.value },
+    registerCustomer: registerCustomer.value,
+  };
+}
+
+function restoreState(saved) {
+  if (!saved) return;
+  cartItems.value = saved.cartItems || [];
+  currentStep.value = saved.currentStep || 1;
+  completedSteps.value = saved.completedSteps || [];
+  isMinimized.value = saved.isMinimized || false;
+  deliveryState.value = saved.deliveryState || 'loading';
+  customerData.value = saved.customerData || null;
+  selectedAddress.value = saved.selectedAddress || null;
+  addressForm.value = saved.addressForm || {
+    name: '',
+    phone: '',
+    address_line1: '',
+    city: '',
+    state: '',
+    pincode: '',
+    notes: '',
+  };
+  registerCustomer.value = saved.registerCustomer || false;
+}
+
+defineExpose({ getState, restoreState });
 </script>
 
 <template>

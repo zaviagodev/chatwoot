@@ -149,6 +149,7 @@ export default {
       showProductPickerPanel: false,
       showCardPickerPanel: false,
       showOrderBuilderPanel: false,
+      orderBuilderStates: {},
       productSendPending: false,
     };
   },
@@ -461,7 +462,11 @@ export default {
         // This prevents overwriting user input (e.g., CC/BCC fields) when performing actions
         // like self-assign or other updates that do not actually change the conversation context
         this.setCCAndToEmailsFromLastChat();
-        // Reset order builder modal when switching conversations
+        // Save order builder state before unmounting
+        if (this.showOrderBuilderPanel && this.$refs.orderBuilderModal) {
+          this.orderBuilderStates[oldConversation.id] =
+            this.$refs.orderBuilderModal.getState();
+        }
         this.showOrderBuilderPanel = false;
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
@@ -470,6 +475,17 @@ export default {
         this.generationState.reset();
         // Clear any stale copilot draft from previous conversation
         this.$store.dispatch('clearCopilotDraft');
+
+        // Restore order builder state for the new conversation if it exists
+        const savedState = this.orderBuilderStates[conversation.id];
+        if (savedState) {
+          this.showOrderBuilderPanel = true;
+          this.$nextTick(() => {
+            if (this.$refs.orderBuilderModal) {
+              this.$refs.orderBuilderModal.restoreState(savedState);
+            }
+          });
+        }
       }
 
       if (this.isOnPrivateNote) {
@@ -791,6 +807,10 @@ export default {
       this.showProductPickerPanel = false;
       this.showCardPickerPanel = false;
       this.showOrderBuilderPanel = !this.showOrderBuilderPanel;
+    },
+    closeOrderBuilder() {
+      this.showOrderBuilderPanel = false;
+      delete this.orderBuilderStates[this.currentChat.id];
     },
     async sendProductCard(payload) {
       this.productSendPending = true;
@@ -1420,10 +1440,11 @@ export default {
     />
     <OrderBuilderModal
       v-if="showOrderBuilderPanel"
+      ref="orderBuilderModal"
       :assistant-id="copilotAssistant.id"
       :line-user-id="contactLineUserId"
       :contact-name="currentContactName"
-      @close="showOrderBuilderPanel = false"
+      @close="closeOrderBuilder"
       @send="sendOrderCheckoutLink"
     />
     <ArticleSearchPopover

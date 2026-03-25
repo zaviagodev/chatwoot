@@ -20,7 +20,7 @@ import ReplyBoxBanner from './ReplyBoxBanner.vue';
 import QuotedEmailPreview from './QuotedEmailPreview.vue';
 import ProductPickerPanel from 'dashboard/components-next/message/ProductPickerPanel.vue';
 import CardPickerPanel from 'dashboard/components-next/message/CardPickerPanel.vue';
-import OrderBuilderPanel from 'dashboard/components-next/message/OrderBuilderPanel.vue';
+import OrderBuilderModal from 'dashboard/components-next/order-builder-modal/OrderBuilderModal.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import AudioRecorder from 'dashboard/components/widgets/WootWriter/AudioRecorder.vue';
@@ -82,7 +82,7 @@ export default {
     CopilotReplyBottomPanel,
     ProductPickerPanel,
     CardPickerPanel,
-    OrderBuilderPanel,
+    OrderBuilderModal,
   },
   mixins: [inboxMixin, fileUploadMixin, keyboardEventListenerMixins],
   props: {
@@ -183,6 +183,13 @@ export default {
       const senderId = this.currentChat?.meta?.sender?.id;
       if (!senderId) return {};
       return this.$store.getters['contacts/getContact'](senderId);
+    },
+    contactLineUserId() {
+      const attrs = this.currentContact?.additional_attributes || {};
+      return attrs.social_line_user_id || this.currentContact?.identifier || '';
+    },
+    currentContactName() {
+      return this.currentContact?.name || '';
     },
     shouldShowReplyToMessage() {
       return (
@@ -836,11 +843,7 @@ export default {
         private: false,
         sender: this.sender,
       };
-      const ok = await this.sendMessage(messagePayload);
-      if (ok) {
-        this.showOrderBuilderPanel = false;
-        useAlert('Checkout link sent');
-      }
+      await this.sendMessage(messagePayload);
     },
     confirmOnSendReply() {
       if (this.isReplyButtonDisabled) {
@@ -1413,21 +1416,14 @@ export default {
       @close="showCardPickerPanel = false"
       @send="sendDesignedCard"
     />
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out motion-reduce:duration-0 motion-reduce:transition-none"
-      enter-from-class="opacity-0 translate-y-2 scale-[0.98]"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition-all duration-200 ease-in motion-reduce:duration-0 motion-reduce:transition-none"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 translate-y-2 scale-[0.98]"
-    >
-      <OrderBuilderPanel
-        v-if="showOrderBuilderPanel"
-        :assistant-id="copilotAssistant.id"
-        @close="showOrderBuilderPanel = false"
-        @send="sendOrderCheckoutLink"
-      />
-    </Transition>
+    <OrderBuilderModal
+      v-if="showOrderBuilderPanel"
+      :assistant-id="copilotAssistant.id"
+      :line-user-id="contactLineUserId"
+      :contact-name="currentContactName"
+      @close="showOrderBuilderPanel = false"
+      @send="sendOrderCheckoutLink"
+    />
     <ArticleSearchPopover
       v-if="showArticleSearchPopover && connectedPortalSlug"
       :selected-portal-slug="connectedPortalSlug"

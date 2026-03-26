@@ -248,7 +248,7 @@ onUnmounted(() => {
               $t('CONVERSATION.REPLYBOX.PRODUCT_PICKER.SEARCH_PLACEHOLDER')
             "
             :aria-label="$t('CONVERSATION.REPLYBOX.PRODUCT_PICKER.SEARCH_ARIA')"
-            class="w-full h-9 pl-10 pr-8 text-sm border border-n-slate-6 rounded-lg bg-white dark:bg-n-slate-3 text-n-slate-12 placeholder-n-slate-9 focus:outline-none focus:ring-2 focus:ring-n-blue-9 focus:border-transparent"
+            class="w-full h-9 !pl-10 pr-8 text-sm border border-n-slate-6 rounded-lg bg-white dark:bg-n-slate-3 text-n-slate-12 placeholder-n-slate-9 focus:outline-none focus:ring-2 focus:ring-n-blue-9 focus:border-transparent"
             @input="onSearchInput"
           />
           <button

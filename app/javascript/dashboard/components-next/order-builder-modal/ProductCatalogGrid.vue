@@ -147,7 +147,7 @@ onMounted(() => {
           ref="searchInputRef"
           v-model="searchQuery"
           type="text"
-          class="w-full rounded-lg border border-n-weak bg-n-slate-2 py-2 pl-9 pr-9 text-sm text-n-slate-12 placeholder:text-n-slate-9 focus:border-n-blue-9 focus:outline-none focus:ring-1 focus:ring-n-blue-9"
+          class="w-full rounded-lg border border-n-weak bg-n-slate-2 py-2 pl-10 pr-9 text-sm text-n-slate-12 placeholder:text-n-slate-9 focus:border-n-blue-9 focus:outline-none focus:ring-1 focus:ring-n-blue-9"
           :placeholder="
             t('CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL.SEARCH_PLACEHOLDER')
           "

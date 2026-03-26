@@ -26,7 +26,7 @@ const props = defineProps({
   initialState: { type: Object, default: null },
 });
 
-const emit = defineEmits(['close', 'send']);
+const emit = defineEmits(['close', 'discard', 'send']);
 
 const { t } = useI18n();
 const I18N = 'CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL';
@@ -286,9 +286,9 @@ function resetAndClose() {
   };
   registerCustomer.value = false;
   showConfirmDialog.value = false;
-  // Trigger close animation then unmount via parent
+  // Trigger close animation then unmount via parent (discard = delete saved state)
   isVisible.value = false;
-  setTimeout(() => emit('close'), 200);
+  setTimeout(() => emit('discard'), 200);
 }
 
 // Send checkout link
@@ -341,13 +341,10 @@ async function handleSendCheckout() {
   }
 }
 
-// Close with confirmation
+// Close — save state if cart has items, just close if empty
 function requestClose() {
-  if (cartItems.value.length > 0) {
-    showConfirmDialog.value = true;
-  } else {
-    resetAndClose();
-  }
+  isVisible.value = false;
+  setTimeout(() => emit('close'), 200);
 }
 
 function onConfirmDiscard() {

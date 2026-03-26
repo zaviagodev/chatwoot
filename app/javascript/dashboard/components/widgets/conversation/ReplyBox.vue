@@ -804,14 +804,30 @@ export default {
     toggleOrderBuilderPanel() {
       this.showProductPickerPanel = false;
       this.showCardPickerPanel = false;
-      // Save state before closing so it can be restored on re-open
+      // Save state before closing so badge shows item count
       if (this.showOrderBuilderPanel && this.$refs.orderBuilderModal) {
-        this.orderBuilderStates[this.currentChat.id] =
-          this.$refs.orderBuilderModal.getState();
+        const state = this.$refs.orderBuilderModal.getState();
+        if (state.cartItems && state.cartItems.length > 0) {
+          this.orderBuilderStates[this.currentChat.id] = state;
+        } else {
+          delete this.orderBuilderStates[this.currentChat.id];
+        }
       }
       this.showOrderBuilderPanel = !this.showOrderBuilderPanel;
     },
-    closeOrderBuilder() {
+    saveAndCloseOrderBuilder() {
+      // Save state before closing so badge shows item count
+      if (this.$refs.orderBuilderModal) {
+        const state = this.$refs.orderBuilderModal.getState();
+        if (state.cartItems && state.cartItems.length > 0) {
+          this.orderBuilderStates[this.currentChat.id] = state;
+        } else {
+          delete this.orderBuilderStates[this.currentChat.id];
+        }
+      }
+      this.showOrderBuilderPanel = false;
+    },
+    discardOrderBuilder() {
       this.showOrderBuilderPanel = false;
       delete this.orderBuilderStates[this.currentChat.id];
     },
@@ -1448,7 +1464,8 @@ export default {
       :line-user-id="contactLineUserId"
       :contact-name="currentContactName"
       :initial-state="orderBuilderStates[currentChat.id] || null"
-      @close="closeOrderBuilder"
+      @close="saveAndCloseOrderBuilder"
+      @discard="discardOrderBuilder"
       @send="sendOrderCheckoutLink"
     />
     <ArticleSearchPopover

@@ -71,28 +71,7 @@ const isSendDisabled = computed(
       {{ t(`${I18N}.BACK_DELIVERY`) }}
     </button>
 
-    <!-- Success overlay -->
-    <Transition
-      enter-active-class="transition-opacity duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-    >
-      <div
-        v-if="sendState === 'success'"
-        class="flex flex-1 flex-col items-center justify-center gap-4 py-12"
-      >
-        <div
-          class="flex h-16 w-16 items-center justify-center rounded-full bg-n-green-3"
-        >
-          <Icon icon="i-lucide-check" size="32" class="text-n-green-11" />
-        </div>
-        <p class="text-lg font-semibold text-n-slate-12">
-          {{ t(`${I18N}.SEND_SUCCESS`) }}
-        </p>
-      </div>
-    </Transition>
-
-    <!-- Review content (hidden during success) -->
+    <!-- Review content (hidden during success — overlay in parent handles it) -->
     <template v-if="sendState !== 'success'">
       <!-- Heading -->
       <h3 class="mb-4 text-lg font-semibold text-n-slate-12">
@@ -209,7 +188,7 @@ const isSendDisabled = computed(
         :disabled="isSendDisabled"
         @click="emit('send')"
       >
-        <Spinner v-if="sendState === 'sending'" size="small" />
+        <Spinner v-if="sendState === 'sending'" :size="16" />
         <span>
           {{
             sendState === 'sending'

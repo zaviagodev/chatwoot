@@ -421,6 +421,8 @@
         "REVIEW_TOTAL": "Total",
         "SEND_CHECKOUT": "Send Checkout Link",
         "SENDING_CHECKOUT": "Creating order...",
+        "SENDING_OVERLAY_TITLE": "Preparing checkout link...",
+        "SENDING_OVERLAY_SUBTITLE": "Creating order for {name}",
         "SEND_SUCCESS": "Checkout link sent!",
         "SEND_ERROR": "Could not create order. {error}",
         "SEND_RETRY": "Try Again",

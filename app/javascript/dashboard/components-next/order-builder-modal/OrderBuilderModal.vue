@@ -106,6 +106,15 @@ const grandTotalFormatted = computed(() => {
   return formatPrice(total, curr);
 });
 
+const recipientName = computed(() => {
+  return (
+    addressForm.value.name ||
+    customerData.value?.display_name ||
+    props.contactName ||
+    ''
+  );
+});
+
 const resolvedAddress = computed(() => {
   if (selectedAddress.value && customerData.value?.addresses) {
     return customerData.value.addresses.find(
@@ -468,7 +477,7 @@ function onBackdropClick(e) {
           appear
         >
           <div
-            class="flex h-[90vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden rounded-xl bg-n-solid-1 shadow-xl"
+            class="relative flex h-[90vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden rounded-xl bg-n-solid-1 shadow-xl"
             @click.stop
           >
             <!-- Header bar -->
@@ -557,6 +566,68 @@ function onBackdropClick(e) {
                 @remove="removeFromCart"
               />
             </div>
+
+            <!-- Sending overlay -->
+            <Transition
+              enter-active-class="transition-opacity duration-200 ease-out"
+              enter-from-class="opacity-0"
+              enter-to-class="opacity-100"
+              leave-active-class="transition-opacity duration-150 ease-in"
+              leave-from-class="opacity-100"
+              leave-to-class="opacity-0"
+            >
+              <div
+                v-if="sendState === 'sending' || sendState === 'success'"
+                class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-xl bg-n-solid-1/95 backdrop-blur-sm"
+              >
+                <template v-if="sendState === 'sending'">
+                  <div
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-n-blue-3"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="28"
+                      height="28"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="animate-spin text-n-blue-11"
+                    >
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                  </div>
+                  <div class="flex flex-col items-center gap-1">
+                    <p class="text-base font-semibold text-n-slate-12">
+                      {{ t(`${I18N}.SENDING_OVERLAY_TITLE`) }}
+                    </p>
+                    <p v-if="recipientName" class="text-sm text-n-slate-10">
+                      {{
+                        t(`${I18N}.SENDING_OVERLAY_SUBTITLE`, {
+                          name: recipientName,
+                        })
+                      }}
+                    </p>
+                  </div>
+                </template>
+                <template v-else>
+                  <div
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-n-green-3"
+                  >
+                    <Icon
+                      icon="i-lucide-check"
+                      size="28"
+                      class="text-n-green-11"
+                    />
+                  </div>
+                  <p class="text-base font-semibold text-n-slate-12">
+                    {{ t(`${I18N}.SEND_SUCCESS`) }}
+                  </p>
+                </template>
+              </div>
+            </Transition>
 
             <!-- Screen reader announcements -->
             <div aria-live="polite" class="sr-only">

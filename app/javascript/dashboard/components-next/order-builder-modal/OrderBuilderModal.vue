@@ -17,7 +17,6 @@ import DeliveryAddressStep from './DeliveryAddressStep.vue';
 import ReviewStep from './ReviewStep.vue';
 import CartSidebar from './CartSidebar.vue';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog.vue';
-import OrderMinimizedPill from './OrderMinimizedPill.vue';
 import { formatPrice } from './formatPrice';
 
 const props = defineProps({
@@ -34,7 +33,6 @@ const I18N = 'CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL';
 
 // State
 const isVisible = ref(false);
-const isMinimized = ref(false);
 const catalogRef = ref(null);
 const currentStep = ref(1);
 const completedSteps = ref([]);
@@ -287,7 +285,6 @@ function resetAndClose() {
     notes: '',
   };
   registerCustomer.value = false;
-  isMinimized.value = false;
   showConfirmDialog.value = false;
   // Trigger close animation then unmount via parent
   isVisible.value = false;
@@ -344,15 +341,6 @@ async function handleSendCheckout() {
   }
 }
 
-// Minimize / restore
-function minimize() {
-  isMinimized.value = true;
-}
-
-function restore() {
-  isMinimized.value = false;
-}
-
 // Close with confirmation
 function requestClose() {
   if (cartItems.value.length > 0) {
@@ -371,12 +359,11 @@ function onKeepEditing() {
   showConfirmDialog.value = false;
 }
 
-// Escape key handler — minimize (not close), per UX Decision 10
+// Escape key handler
 function onKeydown(e) {
   if (e.key === 'Escape') {
     if (showConfirmDialog.value) return; // dialog handles its own Escape
-    if (isMinimized.value) return;
-    minimize();
+    requestClose();
   }
 }
 
@@ -386,7 +373,6 @@ function getState() {
     cartItems: JSON.parse(JSON.stringify(cartItems.value)),
     currentStep: currentStep.value,
     completedSteps: [...completedSteps.value],
-    isMinimized: isMinimized.value,
     deliveryState: deliveryState.value,
     customerData: customerData.value
       ? JSON.parse(JSON.stringify(customerData.value))
@@ -402,7 +388,6 @@ function restoreState(saved) {
   cartItems.value = saved.cartItems || [];
   currentStep.value = saved.currentStep || 1;
   completedSteps.value = saved.completedSteps || [];
-  isMinimized.value = saved.isMinimized || false;
   deliveryState.value = saved.deliveryState || 'loading';
   customerData.value = saved.customerData || null;
   selectedAddress.value = saved.selectedAddress || null;
@@ -458,7 +443,7 @@ function onBackdropClick(e) {
 
 <template>
   <TeleportWithDirection to="body">
-    <!-- Backdrop + Modal (hidden when minimized, stays mounted) -->
+    <!-- Backdrop + Modal -->
     <Transition
       enter-active-class="transition-opacity duration-200 ease-out"
       enter-from-class="opacity-0"
@@ -469,7 +454,6 @@ function onBackdropClick(e) {
     >
       <div
         v-if="isVisible"
-        v-show="!isMinimized"
         class="fixed inset-0 z-[9999] flex items-center justify-center bg-n-alpha-black1 backdrop-blur-[4px]"
         role="dialog"
         :aria-label="t(`${I18N}.TITLE`)"
@@ -497,24 +481,13 @@ function onBackdropClick(e) {
               <h2 class="text-base font-semibold text-n-slate-12">
                 {{ t(`${I18N}.TITLE`) }}
               </h2>
-              <div class="flex items-center gap-2">
-                <!-- Minimize button -->
-                <button
-                  class="flex h-8 w-8 items-center justify-center rounded-lg text-n-slate-11 transition-colors hover:bg-n-slate-3 hover:text-n-slate-12"
-                  :aria-label="t(`${I18N}.MINIMIZE`)"
-                  @click="minimize"
-                >
-                  <Icon icon="i-lucide-chevron-down" size="18" />
-                </button>
-                <!-- Close button -->
-                <button
-                  class="flex h-8 w-8 items-center justify-center rounded-lg text-n-slate-11 transition-colors hover:bg-n-slate-3 hover:text-n-slate-12"
-                  :aria-label="t(`${I18N}.CLOSE`)"
-                  @click="requestClose"
-                >
-                  <Icon icon="i-lucide-x" size="18" />
-                </button>
-              </div>
+              <button
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-n-slate-11 transition-colors hover:bg-n-slate-3 hover:text-n-slate-12"
+                :aria-label="t(`${I18N}.CLOSE`)"
+                @click="requestClose"
+              >
+                <Icon icon="i-lucide-x" size="18" />
+              </button>
             </div>
 
             <!-- Two-column layout -->
@@ -596,13 +569,6 @@ function onBackdropClick(e) {
         </Transition>
       </div>
     </Transition>
-
-    <!-- Minimized pill -->
-    <OrderMinimizedPill
-      v-if="isMinimized"
-      :item-count="cartItemCount"
-      @restore="restore"
-    />
 
     <!-- Close confirmation dialog -->
     <ConfirmDiscardDialog

@@ -174,6 +174,11 @@ export default {
         !!this.copilotAssistant?.erp_tenant_key
       );
     },
+    savedOrderItemCount() {
+      const state = this.orderBuilderStates[this.currentChat?.id];
+      if (!state?.cartItems?.length) return 0;
+      return state.cartItems.reduce((sum, i) => sum + i.qty, 0);
+    },
     showDraftRejectedBanner() {
       return (
         this.copilotDraftRejectedFor === this.conversationId &&
@@ -466,7 +471,6 @@ export default {
         if (this.showOrderBuilderPanel && this.$refs.orderBuilderModal) {
           const state = this.$refs.orderBuilderModal.getState();
           if (state.cartItems && state.cartItems.length > 0) {
-            state.isMinimized = true;
             this.orderBuilderStates[oldConversation.id] = state;
           }
         }
@@ -479,10 +483,7 @@ export default {
         // Clear any stale copilot draft from previous conversation
         this.$store.dispatch('clearCopilotDraft');
 
-        // Show minimized pill if the new conversation has saved order state
-        if (this.orderBuilderStates[conversation.id]) {
-          this.showOrderBuilderPanel = true;
-        }
+        // Badge on the cart button will show saved item count automatically
       }
 
       if (this.isOnPrivateNote) {
@@ -1628,11 +1629,9 @@ export default {
           !showOrderBuilderPanel
         "
         :show-order-builder-button="
-          showProductsButton &&
-          !showOrderBuilderPanel &&
-          !showProductPickerPanel &&
-          !showCardPickerPanel
+          showProductsButton && !showProductPickerPanel && !showCardPickerPanel
         "
+        :saved-order-item-count="savedOrderItemCount"
         @select-whatsapp-template="openWhatsappTemplateModal"
         @select-content-template="openContentTemplateModal"
         @replace-text="replaceText"

@@ -134,6 +134,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    savedOrderItemCount: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: [
     'replaceText',
@@ -423,15 +427,22 @@ export default {
         sm
         @click="$emit('toggleCardsPicker')"
       />
-      <NextButton
-        v-if="showOrderBuilderButton"
-        v-tooltip.top-end="'Create Order'"
-        icon="i-ph-shopping-cart-simple"
-        slate
-        faded
-        sm
-        @click="$emit('toggleOrderBuilder')"
-      />
+      <div v-if="showOrderBuilderButton" class="relative">
+        <NextButton
+          v-tooltip.top-end="'Create Order'"
+          icon="i-ph-shopping-cart-simple"
+          slate
+          faded
+          sm
+          @click="$emit('toggleOrderBuilder')"
+        />
+        <span
+          v-if="savedOrderItemCount > 0"
+          class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-n-blue-9 px-1 text-[10px] font-bold leading-none text-white"
+        >
+          {{ savedOrderItemCount }}
+        </span>
+      </div>
     </div>
     <div class="right-wrap">
       <NextButton

@@ -11,6 +11,8 @@ import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 import AccordionItem from 'dashboard/components/Accordion/AccordionItem.vue';
 import ContactConversations from './ContactConversations.vue';
+import ERPCustomerCard from 'dashboard/components/widgets/conversation/ERPCustomerCard.vue';
+import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import ConversationAction from './ConversationAction.vue';
 import ConversationParticipant from './ConversationParticipant.vue';
 import ContactInfo from './contact/ContactInfo.vue';
@@ -89,6 +91,9 @@ const conversationAdditionalAttributes = computed(
 );
 
 const channelType = computed(() => currentChat.value.meta?.channel);
+const isLineConversation = computed(
+  () => channelType.value === INBOX_TYPES.LINE
+);
 const isGroupConversation = computed(
   () => currentChat.value?.conversation_type === 'group'
 );
@@ -147,6 +152,10 @@ onMounted(() => {
     />
     <GroupInfoPanel v-if="isGroupConversation" :conversation="currentChat" />
     <ContactInfo v-else :contact="contact" :channel-type="channelType" />
+    <ERPCustomerCard
+      v-if="!isGroupConversation && isLineConversation && contact.id"
+      :contact="contact"
+    />
     <div class="px-2 pb-8 list-group">
       <Draggable
         :list="conversationSidebarItems"

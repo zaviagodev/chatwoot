@@ -351,6 +351,15 @@
       "LINEAR_ISSUES": "Linked Linear Issues",
       "SHOPIFY_ORDERS": "Shopify Orders"
     },
+    "ERP_CUSTOMER_CARD": {
+      "CUSTOMER": "ลูกค้า",
+      "NOT_LINKED": "ไม่ได้เชื่อมต่อกับ ERP",
+      "ORDERS_LABEL": "คำสั่งซื้อ",
+      "LAST_ORDER": "ล่าสุด: {date}",
+      "MEMBER_SINCE": "สมาชิกตั้งแต่",
+      "ADDRESSES": "{count} ที่อยู่",
+      "CHANNEL_MISMATCH": "LINE channel ไม่ตรงกัน — กล่องข้อความนี้ใช้บัญชี LINE อื่นที่แตกต่างจากหน้าร้าน อาจจับคู่ลูกค้าไม่ถูกต้อง"
+    },
     "SHOPIFY": {
       "ORDER_ID": "Order #{id}",
       "ERROR": "Error loading orders",

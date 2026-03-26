@@ -590,6 +590,15 @@
       "LINEAR_ISSUES": "Linked Linear Issues",
       "SHOPIFY_ORDERS": "Shopify Orders"
     },
+    "ERP_CUSTOMER_CARD": {
+      "CUSTOMER": "Customer",
+      "NOT_LINKED": "Not linked to ERP",
+      "ORDERS_LABEL": "orders",
+      "LAST_ORDER": "Last: {date}",
+      "MEMBER_SINCE": "Member since",
+      "ADDRESSES": "{count} addresses",
+      "CHANNEL_MISMATCH": "LINE channel mismatch — this inbox uses a different LINE account than the storefront. Customer match may be incorrect."
+    },
     "SHOPIFY": {
       "ORDER_ID": "Order #{id}",
       "ERROR": "Error loading orders",

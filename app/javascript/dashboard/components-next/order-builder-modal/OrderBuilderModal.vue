@@ -311,6 +311,7 @@ async function handleSendCheckout() {
       items: cartItems.value.map(i => ({
         item_code: i.item_code,
         qty: i.qty,
+        rate: i.price || 0,
       })),
       lineUserId: props.lineUserId || undefined,
       registerCustomer: registerCustomer.value || undefined,

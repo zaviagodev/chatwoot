@@ -597,7 +597,17 @@
       "LAST_ORDER": "Last: {date}",
       "MEMBER_SINCE": "Member since",
       "ADDRESSES": "{count} addresses",
-      "CHANNEL_MISMATCH": "LINE channel mismatch — this inbox uses a different LINE account than the storefront. Customer match may be incorrect."
+      "CHANNEL_MISMATCH": "LINE channel mismatch — this inbox uses a different LINE account than the storefront. Customer match may be incorrect.",
+      "AVG_ORDER": "Avg {amount}",
+      "CART_SUMMARY": "Cart: {count} items · {amount}",
+      "CART_ITEM_SINGULAR": "Cart: 1 item · {amount}",
+      "RECENT_ORDERS": "Recent Orders",
+      "DETAILS": "Details",
+      "OUTSTANDING": "Outstanding",
+      "ORDER_STATUS_COMPLETED": "Completed",
+      "ORDER_STATUS_TO_DELIVER": "To Deliver",
+      "ORDER_STATUS_TO_BILL": "To Bill",
+      "ORDER_STATUS_CANCELLED": "Cancelled"
     },
     "SHOPIFY": {
       "ORDER_ID": "Order #{id}",

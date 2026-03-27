@@ -358,7 +358,17 @@
       "LAST_ORDER": "ล่าสุด: {date}",
       "MEMBER_SINCE": "สมาชิกตั้งแต่",
       "ADDRESSES": "{count} ที่อยู่",
-      "CHANNEL_MISMATCH": "LINE channel ไม่ตรงกัน — กล่องข้อความนี้ใช้บัญชี LINE อื่นที่แตกต่างจากหน้าร้าน อาจจับคู่ลูกค้าไม่ถูกต้อง"
+      "CHANNEL_MISMATCH": "LINE channel ไม่ตรงกัน — กล่องข้อความนี้ใช้บัญชี LINE อื่นที่แตกต่างจากหน้าร้าน อาจจับคู่ลูกค้าไม่ถูกต้อง",
+      "AVG_ORDER": "เฉลี่ย {amount}",
+      "CART_SUMMARY": "ตะกร้า: {count} รายการ · {amount}",
+      "CART_ITEM_SINGULAR": "ตะกร้า: 1 รายการ · {amount}",
+      "RECENT_ORDERS": "คำสั่งซื้อล่าสุด",
+      "DETAILS": "รายละเอียด",
+      "OUTSTANDING": "ยอดค้างชำระ",
+      "ORDER_STATUS_COMPLETED": "เสร็จสิ้น",
+      "ORDER_STATUS_TO_DELIVER": "รอจัดส่ง",
+      "ORDER_STATUS_TO_BILL": "รอเรียกเก็บ",
+      "ORDER_STATUS_CANCELLED": "ยกเลิก"
     },
     "SHOPIFY": {
       "ORDER_ID": "Order #{id}",

@@ -48,6 +48,20 @@ export const initalizeRouter = () => {
       return validateAuthenticateRoutePermission(to, next, store);
     });
   });
+
+  // Report route changes to parent window (work.zaviago.com iframe URL sync)
+  // Only fires when embedded as iframe — no effect when opened directly
+  router.afterEach(to => {
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: 'CHATWOOT_ROUTE_CHANGE',
+          payload: { path: to.path, title: to.name || '' },
+        },
+        '*'
+      );
+    }
+  });
 };
 
 export default router;

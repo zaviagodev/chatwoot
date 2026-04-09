@@ -41,22 +41,24 @@ const isGroupConversation = computed(
   () => props.conversation?.conversation_type === 'group'
 );
 
+const hasGroupName = computed(
+  () => isGroupConversation.value && !!props.conversation?.group_name
+);
+
 const currentContactName = computed(() => {
-  if (isGroupConversation.value) {
-    return props.conversation?.group_name || 'Group';
+  if (hasGroupName.value) {
+    return props.conversation.group_name;
   }
   return currentContact.value?.name;
 });
 const currentContactThumbnail = computed(() => {
-  if (isGroupConversation.value) {
+  if (hasGroupName.value) {
     return props.conversation?.group_icon_url || '';
   }
   return currentContact.value?.thumbnail;
 });
 const currentContactStatus = computed(() =>
-  isGroupConversation.value
-    ? undefined
-    : currentContact.value?.availabilityStatus
+  hasGroupName.value ? undefined : currentContact.value?.availabilityStatus
 );
 
 const inbox = computed(() => props.stateInbox);
@@ -119,7 +121,7 @@ const onCardClick = e => {
           class="flex items-center gap-1 text-base font-medium truncate text-n-slate-12"
         >
           <Icon
-            v-if="isGroupConversation"
+            v-if="hasGroupName"
             icon="i-lucide-users"
             class="flex-shrink-0 text-n-slate-11 size-3.5"
           />

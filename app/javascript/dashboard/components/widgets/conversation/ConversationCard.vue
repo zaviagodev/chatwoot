@@ -75,24 +75,26 @@ const isGroupConversation = computed(
   () => props.chat?.conversation_type === 'group'
 );
 
+const hasGroupName = computed(
+  () => isGroupConversation.value && !!props.chat?.group_name
+);
+
 const displayName = computed(() => {
-  if (isGroupConversation.value) {
-    return props.chat?.group_name || 'Group';
+  if (hasGroupName.value) {
+    return props.chat.group_name;
   }
   return currentContact.value?.name;
 });
 
 const displayThumbnail = computed(() => {
-  if (isGroupConversation.value) {
+  if (hasGroupName.value) {
     return props.chat?.group_icon_url || '';
   }
   return currentContact.value?.thumbnail;
 });
 
 const displayStatus = computed(() =>
-  isGroupConversation.value
-    ? undefined
-    : currentContact.value?.availability_status
+  hasGroupName.value ? undefined : currentContact.value?.availability_status
 );
 
 const isActiveChat = computed(() => {

@@ -69,19 +69,23 @@ const isGroupConversation = computed(
   () => props.chat.conversation_type === 'group'
 );
 
+const hasGroupName = computed(
+  () => isGroupConversation.value && !!props.chat?.group_name
+);
+
 const currentContact = computed(() =>
   store.getters['contacts/getContact'](props.chat.meta.sender.id)
 );
 
 const headerName = computed(() => {
-  if (isGroupConversation.value) {
-    return props.chat.group_name || t('CONVERSATION.HEADER.GROUP_CHAT');
+  if (hasGroupName.value) {
+    return props.chat.group_name;
   }
   return currentContact.value.name;
 });
 
 const headerThumbnail = computed(() => {
-  if (isGroupConversation.value) {
+  if (hasGroupName.value) {
     return props.chat.group_icon_url || '';
   }
   return currentContact.value.thumbnail;
@@ -128,9 +132,7 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
         :name="headerName"
         :src="headerThumbnail"
         :size="32"
-        :status="
-          isGroupConversation ? undefined : currentContact.availability_status
-        "
+        :status="hasGroupName ? undefined : currentContact.availability_status"
         hide-offline-status
         rounded-full
       />
@@ -139,7 +141,7 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
       >
         <div class="flex flex-row items-center max-w-full gap-1 p-0 m-0">
           <fluent-icon
-            v-if="isGroupConversation"
+            v-if="hasGroupName"
             size="14"
             class="text-n-slate-11 min-w-[14px] flex-shrink-0"
             icon="people"
@@ -150,7 +152,7 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
             {{ headerName }}
           </span>
           <span
-            v-if="isGroupConversation && chat.group_member_count"
+            v-if="hasGroupName && chat.group_member_count"
             class="text-xs text-n-slate-10 flex-shrink-0"
           >
             {{

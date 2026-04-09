@@ -71,6 +71,30 @@ const currentContact = computed(() => {
     : {};
 });
 
+const isGroupConversation = computed(
+  () => props.chat?.conversation_type === 'group'
+);
+
+const displayName = computed(() => {
+  if (isGroupConversation.value) {
+    return props.chat?.group_name || 'Group';
+  }
+  return currentContact.value?.name;
+});
+
+const displayThumbnail = computed(() => {
+  if (isGroupConversation.value) {
+    return props.chat?.group_icon_url || '';
+  }
+  return currentContact.value?.thumbnail;
+});
+
+const displayStatus = computed(() =>
+  isGroupConversation.value
+    ? undefined
+    : currentContact.value?.availability_status
+);
+
 const isActiveChat = computed(() => {
   return currentChat.value.id === props.chat.id;
 });
@@ -251,10 +275,10 @@ const deleteConversation = () => {
     >
       <Avatar
         v-if="!hideThumbnail"
-        :name="currentContact.name"
-        :src="currentContact.thumbnail"
+        :name="displayName"
+        :src="displayThumbnail"
         :size="32"
-        :status="currentContact.availability_status"
+        :status="displayStatus"
         :class="!showInboxName ? 'mt-4' : 'mt-8'"
         hide-offline-status
         rounded-full
@@ -306,10 +330,16 @@ const deleteConversation = () => {
         </div>
       </div>
       <h4
-        class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
+        class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12 flex items-center gap-1"
         :class="hasUnread ? 'font-semibold' : 'font-medium'"
       >
-        {{ currentContact.name }}
+        <fluent-icon
+          v-if="isGroupConversation"
+          icon="people"
+          size="14"
+          class="flex-shrink-0 text-n-slate-11"
+        />
+        {{ displayName }}
       </h4>
       <VoiceCallStatus
         v-if="voiceCallData.status"

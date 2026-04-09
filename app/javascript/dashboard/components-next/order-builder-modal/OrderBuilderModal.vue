@@ -23,6 +23,7 @@ const props = defineProps({
   assistantId: { type: Number, required: true },
   lineUserId: { type: String, default: '' },
   contactName: { type: String, default: '' },
+  conversationId: { type: [Number, String], default: null },
   initialState: { type: Object, default: null },
 });
 
@@ -314,6 +315,7 @@ async function handleSendCheckout() {
         rate: i.price || 0,
       })),
       lineUserId: props.lineUserId || undefined,
+      conversationId: props.conversationId || undefined,
       registerCustomer: registerCustomer.value || undefined,
     };
     if (selectedAddress.value) {

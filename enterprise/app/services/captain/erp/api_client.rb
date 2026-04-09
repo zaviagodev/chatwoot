@@ -23,12 +23,14 @@ class Captain::Erp::ApiClient
   end
 
   def create_shared_checkout(items:, customer_email: nil, address_name: nil,
-                             address_data: nil, line_user_id: nil, register_customer: nil)
+                             address_data: nil, line_user_id: nil, register_customer: nil,
+                             conversation_id: nil)
     post_to('zaviago_backend.storefront.shared_checkout.create_shared_checkout',
             tenant_key: tenant_key, items: items,
             customer_email: customer_email, address_name: address_name,
             address_data: address_data, line_user_id: line_user_id,
-            register_customer: register_customer)
+            register_customer: register_customer,
+            conversation_id: conversation_id)
   end
 
   def lookup_line_customer(line_user_id:)

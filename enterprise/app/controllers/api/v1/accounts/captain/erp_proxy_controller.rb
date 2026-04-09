@@ -35,7 +35,8 @@ class Api::V1::Accounts::Captain::ErpProxyController < Api::V1::Accounts::BaseCo
       address_name: params[:address_name],
       address_data: params[:address_data],
       line_user_id: params[:line_user_id],
-      register_customer: params[:register_customer]
+      register_customer: params[:register_customer],
+      conversation_id: params[:conversation_id]
     )
     render_result(result)
   end

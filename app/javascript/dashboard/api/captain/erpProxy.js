@@ -36,6 +36,7 @@ class CaptainErpProxy extends ApiClient {
     addressData,
     lineUserId,
     registerCustomer,
+    conversationId,
   } = {}) {
     return axios.post(
       `${this.url}/${assistantId}/erp_proxy/create_shared_checkout`,
@@ -46,6 +47,7 @@ class CaptainErpProxy extends ApiClient {
         address_data: addressData,
         line_user_id: lineUserId,
         register_customer: registerCustomer,
+        conversation_id: conversationId,
       }
     );
   }

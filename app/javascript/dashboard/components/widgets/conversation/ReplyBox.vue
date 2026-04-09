@@ -1463,6 +1463,7 @@ export default {
       :assistant-id="copilotAssistant.id"
       :line-user-id="contactLineUserId"
       :contact-name="currentContactName"
+      :conversation-id="currentChat.id"
       :initial-state="orderBuilderStates[currentChat.id] || null"
       @close="saveAndCloseOrderBuilder"
       @discard="discardOrderBuilder"

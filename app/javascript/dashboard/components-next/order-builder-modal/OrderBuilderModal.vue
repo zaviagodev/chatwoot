@@ -334,12 +334,30 @@ async function handleSendCheckout() {
     sendState.value = 'success';
     liveMessage.value = t(`${I18N}.SEND_SUCCESS`);
 
-    // Format message for conversation — intentionally not i18n'd
-    // (sent to customer in chat; multi-language handled server-side if needed)
+    // Build card payload for LINE Flex Message instead of plain text
     const curr = cartItems.value[0]?.currency || 'THB';
     const formattedTotal = formatPrice(total, curr);
-    const message = `Your order is ready! Total: ${formattedTotal}\n${url}`;
-    emit('send', message);
+    const firstItem = cartItems.value[0] || {};
+    const itemCount = cartItems.value.reduce((sum, i) => sum + (i.qty || 1), 0);
+
+    emit('send', {
+      type: 'checkout_card',
+      message: `${t(`${I18N}.CARD_ALT_TEXT`, { total: formattedTotal })}`,
+      product: {
+        item_name:
+          itemCount > 1
+            ? `${t(`${I18N}.CARD_TITLE`)} (${itemCount})`
+            : firstItem.item_name || t(`${I18N}.CARD_TITLE`),
+        subtitle:
+          itemCount > 1
+            ? cartItems.value.map(i => i.item_name).join(', ')
+            : undefined,
+        price: total,
+        currency: curr,
+        image_url: firstItem.image_url || undefined,
+        checkout_url: url,
+      },
+    });
 
     autoCloseTimer = setTimeout(() => {
       resetAndClose();

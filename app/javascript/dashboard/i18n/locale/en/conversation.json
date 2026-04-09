@@ -424,6 +424,8 @@
         "SENDING_OVERLAY_TITLE": "Preparing checkout link...",
         "SENDING_OVERLAY_SUBTITLE": "Creating order for {name}",
         "SEND_SUCCESS": "Checkout link sent!",
+        "CARD_TITLE": "Your Order",
+        "CARD_ALT_TEXT": "Your order is ready! Total: {total}",
         "SEND_ERROR": "Could not create order. {error}",
         "SEND_RETRY": "Try Again",
         "PILL_LABEL": "Restore order builder — {count} items in cart",

@@ -877,12 +877,27 @@ export default {
       this.productSendPending = false;
       if (ok) this.showCardPickerPanel = false;
     },
-    async sendOrderCheckoutLink(messageText) {
+    async sendOrderCheckoutLink(payload) {
+      // Support both legacy plain text and new card payload
+      if (typeof payload === 'string') {
+        await this.sendMessage({
+          conversationId: this.currentChat.id,
+          message: payload,
+          private: false,
+          sender: this.sender,
+        });
+        return;
+      }
+      // Structured checkout card payload
       const messagePayload = {
         conversationId: this.currentChat.id,
-        message: messageText,
+        message: payload.message || 'Your order is ready',
         private: false,
         sender: this.sender,
+        contentAttributes: {
+          product: payload.product,
+        },
+        contentType: 'cards',
       };
       await this.sendMessage(messagePayload);
     },

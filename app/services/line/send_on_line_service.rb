@@ -98,10 +98,21 @@ class Line::SendOnLineService < Base::SendOnChannelService
   # https://developers.line.biz/en/reference/messaging-api/#flex-message
   def build_card_payload
     attrs = message.content_attributes || {}
+    products = attrs['products']
+    is_itemized = products.is_a?(Array) && products.any? { |p| p['item_name'].present? }
 
-    # Carousel mode (multiple products)
-    if attrs['products'].is_a?(Array) && attrs['products'].length > 1
-      bubbles = attrs['products'].first(12).map { |product| build_card_bubble(product, attrs) }
+    # Itemized checkout card (Order Builder) — always a single mega bubble
+    if is_itemized
+      return {
+        type: 'flex',
+        altText: message.content&.truncate(400) || 'Your order',
+        contents: build_checkout_bubble(products, attrs)
+      }
+    end
+
+    # Carousel mode (Card Designer — multiple product cards)
+    if products.is_a?(Array) && products.length > 1
+      bubbles = products.first(12).map { |product| build_simple_bubble(product, attrs) }
       return {
         type: 'flex',
         altText: message.content&.truncate(400) || 'Your order',
@@ -110,15 +121,126 @@ class Line::SendOnLineService < Base::SendOnChannelService
     end
 
     # Single product/checkout card
-    product = attrs['product'] || attrs['products']&.first || {}
+    product = attrs['product'] || products&.first || {}
     {
       type: 'flex',
       altText: message.content&.truncate(400) || 'Your order',
-      contents: build_card_bubble(product, attrs)
+      contents: build_simple_bubble(product, attrs)
     }
   end
 
-  def build_card_bubble(product, attrs)
+  # Itemized checkout card — customer info, line items with thumbnails, totals, checkout button
+  def build_checkout_bubble(products, attrs)
+    bg_color = '#FFFFFF'
+    accent = '#06C755'
+    text_color = '#111111'
+    muted_color = '#999999'
+
+    bubble = { type: 'bubble', size: 'mega' }
+    bubble[:styles] = { body: { backgroundColor: bg_color }, footer: { backgroundColor: bg_color, separator: true } }
+
+    body_contents = []
+
+    # Store name / header
+    store_name = attrs['store_name'] || 'Zaviago Store'
+    body_contents << { type: 'text', text: store_name, weight: 'bold', size: 'xl', color: text_color }
+    body_contents << { type: 'text', text: attrs['title'] || 'Your Order', size: 'sm', color: muted_color, margin: 'sm' }
+
+    # Customer info section (if provided)
+    customer = attrs['customer']
+    if customer.is_a?(Hash) && customer['name'].present?
+      body_contents << { type: 'separator', margin: 'lg' }
+      body_contents << {
+        type: 'box', layout: 'vertical', margin: 'lg', spacing: 'xs',
+        contents: [
+          { type: 'text', text: customer['name'].to_s.truncate(50), size: 'sm', weight: 'bold', color: text_color },
+          (customer['address'].present? ? { type: 'text', text: customer['address'].to_s.truncate(100), size: 'xs', color: muted_color, wrap: true } : nil)
+        ].compact
+      }
+    end
+
+    # Line items with thumbnails
+    body_contents << { type: 'separator', margin: 'lg' }
+    item_rows = products.first(10).map { |p| build_line_item_row(p, text_color, muted_color) }
+    body_contents << { type: 'box', layout: 'vertical', margin: 'lg', spacing: 'md', contents: item_rows }
+
+    # Totals section
+    currency = products.first&.dig('currency') || 'THB'
+    subtotal = products.sum { |p| (p['price'].to_f) * (p['qty'] || 1).to_i }
+    shipping = attrs['shipping'].to_f
+    grand_total = attrs['grand_total'] || (subtotal + shipping)
+
+    body_contents << { type: 'separator', margin: 'lg' }
+    totals_contents = []
+    totals_contents << build_totals_row('Subtotal', format_price(subtotal, currency), muted_color, text_color)
+    totals_contents << build_totals_row('Shipping', shipping.positive? ? format_price(shipping, currency) : 'Free', muted_color, text_color) if shipping >= 0
+    totals_contents << {
+      type: 'box', layout: 'horizontal', margin: 'md',
+      contents: [
+        { type: 'text', text: 'Total', size: 'lg', weight: 'bold', color: text_color, flex: 4 },
+        { type: 'text', text: format_price(grand_total, currency), size: 'lg', weight: 'bold', color: accent, align: 'end', flex: 3 }
+      ]
+    }
+    body_contents << { type: 'box', layout: 'vertical', margin: 'lg', spacing: 'sm', contents: totals_contents }
+
+    bubble[:body] = { type: 'box', layout: 'vertical', contents: body_contents, paddingAll: '16px' }
+
+    # Checkout button
+    action_url = (attrs['checkout_url'] || products.first&.dig('checkout_url')).to_s
+    if action_url.start_with?('https://')
+      bubble[:footer] = {
+        type: 'box', layout: 'vertical', paddingAll: '12px',
+        contents: [{
+          type: 'button', style: 'primary', color: accent, height: 'sm',
+          action: { type: 'uri', label: 'Checkout ชำระเงิน', uri: action_url }
+        }]
+      }
+    end
+
+    bubble
+  end
+
+  def build_line_item_row(product, text_color, muted_color)
+    name = product['item_name'].to_s.truncate(30)
+    qty = (product['qty'] || 1).to_i
+    currency = product['currency'] || 'THB'
+    price = format_price((product['price'].to_f) * qty, currency)
+    image_url = product['image_url'].to_s
+
+    row_contents = []
+
+    # Thumbnail (40x40)
+    if image_url.start_with?('https://')
+      row_contents << {
+        type: 'image', url: image_url, size: '40px', aspectRatio: '1:1', aspectMode: 'cover',
+        flex: 0
+      }
+    end
+
+    # Name + qty and price
+    row_contents << {
+      type: 'box', layout: 'vertical', flex: 4, spacing: 'none',
+      contents: [
+        { type: 'text', text: qty > 1 ? "#{name} ×#{qty}" : name, size: 'sm', color: text_color, wrap: true }
+      ]
+    }
+    row_contents << { type: 'text', text: price, size: 'sm', color: text_color, align: 'end', flex: 2, gravity: 'center' }
+
+    { type: 'box', layout: 'horizontal', spacing: 'md', contents: row_contents }
+  end
+
+  def build_totals_row(label, value, label_color, value_color)
+    {
+      type: 'box', layout: 'horizontal',
+      contents: [
+        { type: 'text', text: label, size: 'sm', color: label_color, flex: 4 },
+        { type: 'text', text: value, size: 'sm', color: value_color, align: 'end', flex: 3 }
+      ]
+    }
+  end
+
+  # Simple single-product card (legacy / Card Designer path)
+  def build_simple_bubble(product, attrs)
     design = resolve_card_design(attrs['design_id'])
     sections = design.dig('sections') || {}
     colors = design.dig('colors') || {}

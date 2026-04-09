@@ -334,29 +334,43 @@ async function handleSendCheckout() {
     sendState.value = 'success';
     liveMessage.value = t(`${I18N}.SEND_SUCCESS`);
 
-    // Build card payload for LINE Flex Message instead of plain text
+    // Build itemized card payload for LINE Flex Message
     const curr = cartItems.value[0]?.currency || 'THB';
     const formattedTotal = formatPrice(total, curr);
-    const firstItem = cartItems.value[0] || {};
-    const itemCount = cartItems.value.reduce((sum, i) => sum + (i.qty || 1), 0);
+
+    // Resolve customer name and address for the card
+    const addr = resolvedAddress.value || {};
+    const custName =
+      addressForm.value.name || addr.address_title || props.contactName || '';
+    const custAddress = addr.address_line1
+      ? [addr.address_line1, addr.city, addr.state, addr.pincode]
+          .filter(Boolean)
+          .join(', ')
+      : [
+          addressForm.value.address_line1,
+          addressForm.value.city,
+          addressForm.value.state,
+          addressForm.value.pincode,
+        ]
+          .filter(Boolean)
+          .join(', ');
 
     emit('send', {
       type: 'checkout_card',
       message: `${t(`${I18N}.CARD_ALT_TEXT`, { total: formattedTotal })}`,
-      product: {
-        item_name:
-          itemCount > 1
-            ? `${t(`${I18N}.CARD_TITLE`)} (${itemCount})`
-            : firstItem.item_name || t(`${I18N}.CARD_TITLE`),
-        subtitle:
-          itemCount > 1
-            ? cartItems.value.map(i => i.item_name).join(', ')
-            : undefined,
-        price: total,
-        currency: curr,
-        image_url: firstItem.image_url || undefined,
+      products: cartItems.value.map(i => ({
+        item_name: i.item_name,
+        price: i.price || 0,
+        qty: i.qty || 1,
+        currency: i.currency || curr,
+        image_url: i.image_url || undefined,
         checkout_url: url,
-      },
+      })),
+      customer: custName
+        ? { name: custName, address: custAddress || undefined }
+        : undefined,
+      grand_total: total,
+      checkout_url: url,
     });
 
     autoCloseTimer = setTimeout(() => {

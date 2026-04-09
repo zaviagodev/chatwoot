@@ -888,15 +888,22 @@ export default {
         });
         return;
       }
-      // Structured checkout card payload
+      // Structured checkout card payload — itemized or single product
+      const attrs = {};
+      if (payload.products) {
+        attrs.products = payload.products;
+        attrs.customer = payload.customer;
+        attrs.grand_total = payload.grand_total;
+        attrs.checkout_url = payload.checkout_url;
+      } else if (payload.product) {
+        attrs.product = payload.product;
+      }
       const messagePayload = {
         conversationId: this.currentChat.id,
         message: payload.message || 'Your order is ready',
         private: false,
         sender: this.sender,
-        contentAttributes: {
-          product: payload.product,
-        },
+        contentAttributes: attrs,
         contentType: 'cards',
       };
       await this.sendMessage(messagePayload);

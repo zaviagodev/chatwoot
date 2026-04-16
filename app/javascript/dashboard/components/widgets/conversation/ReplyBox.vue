@@ -168,7 +168,6 @@ export default {
     }),
     showProductsButton() {
       return (
-        this.isALineChannel &&
         !this.isPrivate &&
         !!this.copilotAssistant?.id &&
         !!this.copilotAssistant?.erp_tenant_key
@@ -888,7 +887,28 @@ export default {
         });
         return;
       }
-      // Structured checkout card payload — itemized or single product
+      // Non-LINE channels (FB, IG, WhatsApp, etc.) get a plain URL text message
+      // instead of the structured checkout card (which renders as a LINE Flex bubble).
+      if (!this.isALineChannel) {
+        const url = payload.checkout_url || payload.product?.checkout_url;
+        const lines = [];
+        if (payload.message) lines.push(payload.message);
+        if (url) {
+          lines.push(lines.length ? '' : 'Your order is ready');
+          lines.push(url);
+        }
+        await this.sendMessage({
+          conversationId: this.currentChat.id,
+          message:
+            lines.filter(Boolean).join('\n').trim() ||
+            url ||
+            'Your order is ready',
+          private: false,
+          sender: this.sender,
+        });
+        return;
+      }
+      // LINE: structured checkout card payload — itemized or single product
       const attrs = {};
       if (payload.products) {
         attrs.products = payload.products;

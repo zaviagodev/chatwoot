@@ -10,6 +10,15 @@ class Api::V1::Accounts::Conversations::CopilotDraftsController < Api::V1::Accou
   end
 
   def approve
+    # Idempotency guard: prevent duplicate messages from double-click / rapid re-submit.
+    # Uses atomic Redis SET NX with 5-second TTL — only the first request proceeds.
+    approve_key = format('COPILOT_APPROVE::%<conversation_id>d', conversation_id: @conversation.id)
+    unless Redis::Alfred.set(approve_key, '1', nx: true, ex: 5)
+      # Another approve already in flight — return the most recent outgoing message
+      existing = @conversation.messages.outgoing.order(created_at: :desc).first
+      return render json: { message_id: existing&.id }, status: :ok
+    end
+
     @message = @conversation.messages.create!(
       message_type: :outgoing,
       account_id: @conversation.account_id,

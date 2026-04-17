@@ -6,6 +6,9 @@ class Captain::InboxPendingConversationsResolutionJob < ApplicationJob
 
     resolvable_conversations = inbox.conversations.pending.where('last_activity_at < ? ', Time.now.utc - 1.hour).limit(Limits::BULK_ACTIONS_LIMIT)
     resolvable_conversations.each do |conversation|
+      # Skip conversations in copilot draft mode — auto-resolve requires human approval
+      next if conversation.respond_to?(:copilot_draft?) && conversation.copilot_draft?
+
       create_outgoing_message(conversation, inbox)
       conversation.resolved!
     end

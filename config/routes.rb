@@ -88,12 +88,16 @@ Rails.application.routes.draw do
                 collection do
                   post :search_products
                   post :product_detail
+                  post :variants
                   get :item_groups
                   get :warehouses
                   post :setup
                   post :create_shared_checkout
                   post :lookup_line_customer
                   post :search_thai_address
+                  post :customization
+                  post :upload_file
+                  post :bundle_info
                 end
               end
             end

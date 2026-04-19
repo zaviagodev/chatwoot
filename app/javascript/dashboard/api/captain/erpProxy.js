@@ -20,6 +20,12 @@ class CaptainErpProxy extends ApiClient {
     });
   }
 
+  getVariants({ assistantId, itemCode } = {}) {
+    return axios.post(`${this.url}/${assistantId}/erp_proxy/variants`, {
+      item_code: itemCode,
+    });
+  }
+
   getItemGroups({ assistantId } = {}) {
     return axios.get(`${this.url}/${assistantId}/erp_proxy/item_groups`);
   }
@@ -64,6 +70,28 @@ class CaptainErpProxy extends ApiClient {
       `${this.url}/${assistantId}/erp_proxy/lookup_line_customer`,
       { line_user_id: lineUserId },
       signal ? { signal } : {}
+    );
+  }
+
+  getCustomization({ assistantId, itemCode } = {}) {
+    return axios.post(`${this.url}/${assistantId}/erp_proxy/customization`, {
+      item_code: itemCode,
+    });
+  }
+
+  getBundleInfo({ assistantId, itemCode } = {}) {
+    return axios.post(`${this.url}/${assistantId}/erp_proxy/bundle_info`, {
+      item_code: itemCode,
+    });
+  }
+
+  uploadCustomizationFile({ assistantId, file } = {}) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axios.post(
+      `${this.url}/${assistantId}/erp_proxy/upload_file`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
   }
 

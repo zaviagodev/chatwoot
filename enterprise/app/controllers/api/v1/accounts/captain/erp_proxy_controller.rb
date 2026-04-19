@@ -18,6 +18,26 @@ class Api::V1::Accounts::Captain::ErpProxyController < Api::V1::Accounts::BaseCo
     render_result(result)
   end
 
+  def variants
+    result = erp_client.get_variants(item_code: params[:item_code])
+    render_result(result)
+  end
+
+  def customization
+    result = erp_client.get_customization(item_code: params[:item_code])
+    render_result(result)
+  end
+
+  def upload_file
+    result = erp_client.upload_customization_file(file: params[:file])
+    render_result(result)
+  end
+
+  def bundle_info
+    result = erp_client.get_bundle_info(item_code: params[:item_code])
+    render_result(result)
+  end
+
   def item_groups
     result = erp_client.get_item_groups
     render_result(result)

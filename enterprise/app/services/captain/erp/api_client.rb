@@ -47,6 +47,30 @@ class Captain::Erp::ApiClient
     post('get_product_detail', tenant_key: tenant_key, item_code: item_code)
   end
 
+  def get_variants(item_code:)
+    post('get_variants', tenant_key: tenant_key, item_code: item_code)
+  end
+
+  def get_customization(item_code:)
+    post('get_customization', tenant_key: tenant_key, item_code: item_code)
+  end
+
+  def get_bundle_info(item_code:)
+    post_to('zaviago_backend.api.captain_bundle.get_bundle_info', tenant_key: tenant_key, item_code: item_code)
+  end
+
+  def upload_customization_file(file:)
+    response = HTTParty.post(
+      "#{@base_url}/api/method/zaviago_backend.storefront.customization_upload.upload_customization_file",
+      body: { tenant: tenant_key, file: file },
+      headers: { 'X-API-Key' => @api_key },
+      timeout: TIMEOUT
+    )
+    handle_response(response)
+  rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
+    { error: "ERPNext connection failed: #{e.class.name}", status: 503 }
+  end
+
   def get_stock_batch(item_codes:, warehouse: nil)
     results = {}
     item_codes.each_slice(BATCH_SIZE) do |batch|

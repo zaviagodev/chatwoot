@@ -1,5 +1,13 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  provide,
+} from 'vue';
 import { useI18n } from 'vue-i18n';
 import { debounce } from '@chatwoot/utils';
 import CaptainErpProxy from 'dashboard/api/captain/erpProxy';
@@ -7,6 +15,9 @@ import Icon from 'next/icon/Icon.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import DeliverySection from './DeliverySection.vue';
+import VariantPickerSheet from './VariantPickerSheet.vue';
+import PersonalizationFormSheet from './PersonalizationFormSheet.vue';
+import BundleConfigSheet from './BundleConfigSheet.vue';
 
 const props = defineProps({
   assistantId: {
@@ -42,6 +53,34 @@ const productRefs = ref([]);
 const isSendingCheckout = ref(false);
 const sendError = ref('');
 const errorItemCode = ref('');
+
+// Variant picker state
+const showVariantPicker = ref(false);
+const variantPickerProduct = ref(null);
+
+// Personalization form state
+const showPersonalizationForm = ref(false);
+const personalizationProduct = ref(null);
+const personalizationVariantData = ref(null);
+
+// Bundle config state
+const showBundleConfig = ref(false);
+const bundleConfigProduct = ref(null);
+
+// Session-level API response caches (auto-cleared on panel unmount via v-if)
+const variantCache = new Map();
+const customizationCache = new Map();
+const bundleCache = new Map();
+provide('variantCache', variantCache);
+provide('customizationCache', customizationCache);
+provide('bundleCache', bundleCache);
+
+// Combined flow + edit mode state
+const pendingVariantSelections = ref(null); // {Size: "M"} map for back nav
+const editingItemId = ref(null); // UUID of item being edited
+const expandedItems = ref(new Set()); // expanded personalization summaries
+const pendingPersonalizationValues = ref(null); // {label: value} map for edit
+const pendingBundleSelections = ref(null); // edit mode bundle selections
 
 // Delivery section state
 const deliveryState = ref('loading');
@@ -85,11 +124,11 @@ const formatListPrice = product => {
   }
 };
 
-// Format line total (price x qty)
+// Format line total (price x qty), including addon surcharges
 const formatLineTotal = item => {
   if (!item.price && item.price !== 0) return '';
   const curr = item.currency || 'THB';
-  const total = item.price * item.qty;
+  const total = (item.price + (item.addon_total || 0)) * item.qty;
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -118,7 +157,10 @@ const itemCountLabel = computed(() => {
 
 const estimatedTotal = computed(() => {
   if (orderItems.value.some(item => item.price == null)) return null;
-  return orderItems.value.reduce((sum, item) => sum + item.price * item.qty, 0);
+  return orderItems.value.reduce(
+    (sum, item) => sum + (item.price + (item.addon_total || 0)) * item.qty,
+    0
+  );
 });
 
 const formattedTotal = computed(() => {
@@ -167,20 +209,22 @@ const onSearchInput = () => {
 
 // Order management
 const addToOrder = product => {
+  // Non-personalized items can merge by item_code
   const existing = orderItems.value.find(
-    item => item.item_code === product.item_code
+    item => item.item_code === product.item_code && !item.customizations
   );
   if (existing) {
     existing.qty += 1;
-    // Pulse highlight for duplicate add
-    highlightedItem.value = product.item_code;
+    highlightedItem.value = existing.id;
     setTimeout(() => {
-      if (highlightedItem.value === product.item_code) {
+      if (highlightedItem.value === existing.id) {
         highlightedItem.value = '';
       }
     }, 600);
   } else {
+    const id = crypto.randomUUID();
     orderItems.value.push({
+      id,
       item_code: product.item_code,
       item_name: product.item_name,
       price: product.price,
@@ -194,46 +238,389 @@ const addToOrder = product => {
     name: product.item_name,
   });
 
-  // Checkmark animation: show for 600ms
-  const prevTimeout = recentlyAdded.value.get(product.item_code);
-  if (prevTimeout) clearTimeout(prevTimeout);
-  const timeoutId = setTimeout(() => {
-    recentlyAdded.value.delete(product.item_code);
-  }, 600);
-  recentlyAdded.value.set(product.item_code, timeoutId);
-};
-
-const removeFromOrder = itemCode => {
-  const item = orderItems.value.find(i => i.item_code === itemCode);
-  const itemName = item?.item_name || 'Item';
-  orderItems.value = orderItems.value.filter(i => i.item_code !== itemCode);
-  liveMessage.value = t(`${I18N}.REMOVED_ANNOUNCEMENT`, { name: itemName });
-
-  // Clear pending checkmark timeout
-  const pendingTimeout = recentlyAdded.value.get(itemCode);
-  if (pendingTimeout) {
-    clearTimeout(pendingTimeout);
-    recentlyAdded.value.delete(itemCode);
+  const itemId = orderItems.value.find(
+    i => i.item_code === product.item_code
+  )?.id;
+  if (itemId) {
+    const prevTimeout = recentlyAdded.value.get(itemId);
+    if (prevTimeout) clearTimeout(prevTimeout);
+    const timeoutId = setTimeout(() => {
+      recentlyAdded.value.delete(itemId);
+    }, 600);
+    recentlyAdded.value.set(itemId, timeoutId);
   }
 };
 
-const updateQty = (itemCode, newQty) => {
-  const parsed = parseInt(newQty, 10);
-  if (Number.isNaN(parsed) || parsed < 1) {
-    removeFromOrder(itemCode);
+// Handle product click — bundle first, then variant picker, personalization, or direct add
+const handleProductClick = product => {
+  // Bundle check FIRST — a bundle parent can also have has_customization=true
+  if (product.is_bundle) {
+    bundleConfigProduct.value = product;
+    showBundleConfig.value = true;
+  } else if (product.has_variants && product.variant_count > 0) {
+    variantPickerProduct.value = product;
+    showVariantPicker.value = true;
+  } else if (product.has_customization) {
+    // Personalization only (no variants) — open personalization form directly
+    personalizationProduct.value = product;
+    personalizationVariantData.value = null;
+    showPersonalizationForm.value = true;
+  } else {
+    addToOrder(product);
+  }
+};
+
+// Handle variant selection from picker sheet
+const handleVariantAdd = variantData => {
+  // variantData: { item_code, item_name, price, currency, image, selected_options, stock_status }
+  const hasCustomization = variantPickerProduct.value?.has_customization;
+
+  // Combined flow: product has personalization → transition to personalization form
+  if (hasCustomization) {
+    // Convert selected_options array to map for back navigation
+    const map = {};
+    (variantData.selected_options || []).forEach(o => {
+      map[o.name] = o.value;
+    });
+    pendingVariantSelections.value = map;
+
+    personalizationVariantData.value = variantData;
+    personalizationProduct.value = variantPickerProduct.value;
+    showVariantPicker.value = false;
+    // editingItemId persists across transition if in edit mode
+    showPersonalizationForm.value = true;
     return;
   }
-  const item = orderItems.value.find(i => i.item_code === itemCode);
+
+  // Variant-only: edit mode → update existing item
+  if (editingItemId.value) {
+    const existing = orderItems.value.find(i => i.id === editingItemId.value);
+    if (existing) {
+      existing.item_code = variantData.item_code;
+      existing.item_name = variantData.item_name;
+      existing.price = variantData.price;
+      existing.currency = variantData.currency || 'THB';
+      existing.image_url = variantData.image || null;
+      existing.stock_status = variantData.stock_status || 'in_stock';
+      existing.selected_options = variantData.selected_options || [];
+    }
+    editingItemId.value = null;
+    showVariantPicker.value = false;
+    variantPickerProduct.value = null;
+    pendingVariantSelections.value = null;
+    return;
+  }
+
+  // Variant-only: normal add — non-personalized variants can merge by item_code
+  const existing = orderItems.value.find(
+    item => item.item_code === variantData.item_code && !item.customizations
+  );
+  if (existing) {
+    existing.qty += 1;
+    highlightedItem.value = existing.id;
+    setTimeout(() => {
+      if (highlightedItem.value === existing.id) {
+        highlightedItem.value = '';
+      }
+    }, 600);
+  } else {
+    const id = crypto.randomUUID();
+    orderItems.value.push({
+      id,
+      item_code: variantData.item_code,
+      item_name: variantData.item_name,
+      price: variantData.price,
+      currency: variantData.currency || 'THB',
+      image_url: variantData.image || null,
+      stock_status: variantData.stock_status || 'in_stock',
+      qty: 1,
+      selected_options: variantData.selected_options || [],
+      // Store template item_code for edit mode (variant code differs from template)
+      template_item_code: variantPickerProduct.value?.item_code || null,
+    });
+  }
+  liveMessage.value = t(`${I18N}.ADDED_ANNOUNCEMENT`, {
+    name: variantData.item_name,
+  });
+  showVariantPicker.value = false;
+  variantPickerProduct.value = null;
+  pendingVariantSelections.value = null;
+};
+
+// Handle personalization add from form sheet
+const handlePersonalizationAdd = data => {
+  // data: { item_code, item_name, price, currency, image, selected_options, customizations, addon_total, customization_summary, stock_status }
+
+  let itemId;
+
+  // Edit mode: update existing item in place (keep UUID)
+  if (editingItemId.value) {
+    const existing = orderItems.value.find(i => i.id === editingItemId.value);
+    if (existing) {
+      existing.item_code = data.item_code;
+      existing.item_name = data.item_name;
+      existing.price = data.price;
+      existing.currency = data.currency || 'THB';
+      existing.image_url = data.image || null;
+      existing.stock_status = data.stock_status || 'in_stock';
+      existing.selected_options = data.selected_options || [];
+      existing.customizations = data.customizations;
+      existing.addon_total = data.addon_total || 0;
+      existing.customization_summary = data.customization_summary || '';
+      itemId = existing.id;
+    }
+    editingItemId.value = null;
+  } else {
+    // New item
+    itemId = crypto.randomUUID();
+    orderItems.value.push({
+      id: itemId,
+      item_code: data.item_code,
+      item_name: data.item_name,
+      price: data.price,
+      currency: data.currency || 'THB',
+      image_url: data.image || null,
+      stock_status: data.stock_status || 'in_stock',
+      qty: 1,
+      selected_options: data.selected_options || [],
+      customizations: data.customizations,
+      addon_total: data.addon_total || 0,
+      customization_summary: data.customization_summary || '',
+      // Store template item_code for edit mode
+      template_item_code: personalizationProduct.value?.item_code || null,
+    });
+  }
+
+  liveMessage.value = t(`${I18N}.ADDED_ANNOUNCEMENT`, {
+    name: data.item_name,
+  });
+  showPersonalizationForm.value = false;
+  personalizationProduct.value = null;
+  personalizationVariantData.value = null;
+  pendingVariantSelections.value = null;
+  pendingPersonalizationValues.value = null;
+
+  // Checkmark animation
+  if (itemId) {
+    const prevTimeout = recentlyAdded.value.get(itemId);
+    if (prevTimeout) clearTimeout(prevTimeout);
+    const timeoutId = setTimeout(() => {
+      recentlyAdded.value.delete(itemId);
+    }, 600);
+    recentlyAdded.value.set(itemId, timeoutId);
+  }
+};
+
+const closePersonalizationForm = () => {
+  showPersonalizationForm.value = false;
+  personalizationProduct.value = null;
+  personalizationVariantData.value = null;
+  editingItemId.value = null;
+  pendingVariantSelections.value = null;
+  pendingPersonalizationValues.value = null;
+};
+
+// Handle bundle add from BundleConfigSheet
+const handleBundleAdd = data => {
+  let itemId;
+
+  if (editingItemId.value) {
+    const existing = orderItems.value.find(i => i.id === editingItemId.value);
+    if (existing) {
+      existing.item_code = data.item_code;
+      existing.item_name = data.item_name;
+      existing.price = data.price;
+      existing.currency = data.currency || 'THB';
+      existing.image_url = data.image || null;
+      existing.stock_status = data.stock_status || 'in_stock';
+      existing.is_bundle = true;
+      existing.bundle_variant_selections = data.bundle_variant_selections;
+      existing.bundle_children_summary = data.bundle_children_summary || '';
+      existing.customizations = data.customizations;
+      existing.addon_total = data.addon_total || 0;
+      existing.customization_summary = data.customization_summary || '';
+      existing.selected_options = [];
+      itemId = existing.id;
+    }
+    editingItemId.value = null;
+  } else {
+    itemId = crypto.randomUUID();
+    orderItems.value.push({
+      id: itemId,
+      item_code: data.item_code,
+      item_name: data.item_name,
+      price: data.price,
+      currency: data.currency || 'THB',
+      image_url: data.image || null,
+      stock_status: data.stock_status || 'in_stock',
+      qty: 1,
+      is_bundle: true,
+      bundle_variant_selections: data.bundle_variant_selections,
+      bundle_children_summary: data.bundle_children_summary || '',
+      customizations: data.customizations,
+      addon_total: data.addon_total || 0,
+      customization_summary: data.customization_summary || '',
+      selected_options: [],
+      template_item_code: data.item_code,
+    });
+  }
+
+  liveMessage.value = t(`${I18N}.ADDED_ANNOUNCEMENT`, {
+    name: data.item_name,
+  });
+  showBundleConfig.value = false;
+  bundleConfigProduct.value = null;
+  pendingBundleSelections.value = null;
+  pendingPersonalizationValues.value = null;
+
+  if (itemId) {
+    const prevTimeout = recentlyAdded.value.get(itemId);
+    if (prevTimeout) clearTimeout(prevTimeout);
+    const timeoutId = setTimeout(() => {
+      recentlyAdded.value.delete(itemId);
+    }, 600);
+    recentlyAdded.value.set(itemId, timeoutId);
+  }
+};
+
+const closeBundleConfig = () => {
+  showBundleConfig.value = false;
+  bundleConfigProduct.value = null;
+  editingItemId.value = null;
+  pendingBundleSelections.value = null;
+  pendingPersonalizationValues.value = null;
+};
+
+const closeVariantPicker = () => {
+  showVariantPicker.value = false;
+  variantPickerProduct.value = null;
+  editingItemId.value = null;
+  pendingVariantSelections.value = null;
+};
+
+// Back from personalization → re-open variant picker with preserved selections
+const handlePersonalizationBack = () => {
+  showPersonalizationForm.value = false;
+  personalizationVariantData.value = null;
+  // Re-open variant picker with the same product + preserved selections
+  variantPickerProduct.value = personalizationProduct.value;
+  showVariantPicker.value = true;
+  // editingItemId persists — still in edit flow
+};
+
+// Edit a configured item — re-open the appropriate sheet(s)
+const handleEditItem = item => {
+  // Bundle items — detect via is_bundle flag (NOT bundle_variant_selections presence)
+  if (item.is_bundle) {
+    editingItemId.value = item.id;
+    pendingBundleSelections.value = item.bundle_variant_selections
+      ? { ...item.bundle_variant_selections }
+      : null;
+    if (item.customizations) {
+      pendingPersonalizationValues.value = { ...item.customizations };
+    }
+    const templateCode = item.template_item_code || item.item_code;
+    bundleConfigProduct.value = searchResults.value.find(
+      p => p.item_code === templateCode
+    ) || {
+      item_code: templateCode,
+      item_name: item.item_name,
+      image_url: item.image_url,
+      price: item.price,
+      currency: item.currency,
+      is_bundle: true,
+    };
+    showBundleConfig.value = true;
+    return;
+  }
+
+  const hasVariants = item.selected_options && item.selected_options.length > 0;
+  const hasCustomizations =
+    item.customizations && Object.keys(item.customizations).length > 0;
+
+  if (!hasVariants && !hasCustomizations) return; // Simple item — nothing to edit
+
+  editingItemId.value = item.id;
+
+  // Convert selected_options array to map for initialSelections
+  if (hasVariants) {
+    const map = {};
+    item.selected_options.forEach(o => {
+      map[o.name] = o.value;
+    });
+    pendingVariantSelections.value = map;
+  }
+
+  // Store personalization values for edit
+  if (hasCustomizations) {
+    pendingPersonalizationValues.value = { ...item.customizations };
+  }
+
+  // Find the original template product from search results or reconstruct it
+  const templateCode = item.template_item_code || item.item_code;
+  const searchProduct = searchResults.value.find(
+    p => p.item_code === templateCode
+  );
+
+  if (hasVariants) {
+    variantPickerProduct.value = searchProduct || {
+      item_code: templateCode,
+      item_name: item.item_name.split(' — ')[0] || item.item_name,
+      image_url: item.image_url,
+      has_customization: hasCustomizations,
+      has_variants: true,
+    };
+    showVariantPicker.value = true;
+  } else {
+    personalizationProduct.value = searchProduct || {
+      item_code: templateCode,
+      item_name: item.item_name,
+      image_url: item.image_url,
+      has_customization: true,
+    };
+    personalizationVariantData.value = null;
+    showPersonalizationForm.value = true;
+  }
+};
+
+// Toggle expanded personalization summary
+const toggleExpand = itemId => {
+  if (expandedItems.value.has(itemId)) {
+    expandedItems.value.delete(itemId);
+  } else {
+    expandedItems.value.add(itemId);
+  }
+};
+
+const removeFromOrder = itemId => {
+  const item = orderItems.value.find(i => i.id === itemId);
+  const itemName = item?.item_name || 'Item';
+  orderItems.value = orderItems.value.filter(i => i.id !== itemId);
+  liveMessage.value = t(`${I18N}.REMOVED_ANNOUNCEMENT`, { name: itemName });
+
+  const pendingTimeout = recentlyAdded.value.get(itemId);
+  if (pendingTimeout) {
+    clearTimeout(pendingTimeout);
+    recentlyAdded.value.delete(itemId);
+  }
+};
+
+const updateQty = (itemId, newQty) => {
+  const parsed = parseInt(newQty, 10);
+  if (Number.isNaN(parsed) || parsed < 1) {
+    removeFromOrder(itemId);
+    return;
+  }
+  const item = orderItems.value.find(i => i.id === itemId);
   if (item) {
     item.qty = parsed;
   }
 };
 
-const handleQtyBlur = (itemCode, event) => {
+const handleQtyBlur = (itemId, event) => {
   const parsed = parseInt(event.target.value, 10);
   if (Number.isNaN(parsed) || parsed < 1) {
-    // Reset to 1 instead of removing on blur
-    const item = orderItems.value.find(i => i.item_code === itemCode);
+    const item = orderItems.value.find(i => i.id === itemId);
     if (item) {
       item.qty = 1;
       event.target.value = '1';
@@ -241,24 +628,28 @@ const handleQtyBlur = (itemCode, event) => {
   }
 };
 
-const decrementQty = itemCode => {
-  const item = orderItems.value.find(i => i.item_code === itemCode);
+const decrementQty = itemId => {
+  const item = orderItems.value.find(i => i.id === itemId);
   if (!item) return;
   if (item.qty <= 1) {
-    removeFromOrder(itemCode);
+    removeFromOrder(itemId);
   } else {
     item.qty -= 1;
   }
 };
 
-const incrementQty = itemCode => {
-  const item = orderItems.value.find(i => i.item_code === itemCode);
+const incrementQty = itemId => {
+  const item = orderItems.value.find(i => i.id === itemId);
   if (item) {
     item.qty += 1;
   }
 };
 
-const wasRecentlyAdded = itemCode => recentlyAdded.value.has(itemCode);
+// Check if product was recently added (for search results, looks up by item_code)
+const wasProductRecentlyAdded = itemCode => {
+  const item = orderItems.value.find(i => i.item_code === itemCode);
+  return item ? recentlyAdded.value.has(item.id) : false;
+};
 
 // Discard confirmation
 const handleClose = () => {
@@ -324,10 +715,16 @@ const handleSendCheckout = async () => {
 
     const { data } = await CaptainErpProxy.createSharedCheckout({
       assistantId: props.assistantId,
-      items: orderItems.value.map(item => ({
-        item_code: item.item_code,
-        qty: item.qty,
-      })),
+      items: orderItems.value.map(item => {
+        const payload = { item_code: item.item_code, qty: item.qty };
+        if (item.customizations) {
+          payload.customizations = item.customizations;
+        }
+        if (item.bundle_variant_selections) {
+          payload.bundle_variant_selections = item.bundle_variant_selections;
+        }
+        return payload;
+      }),
       ...deliveryParams,
     });
 
@@ -354,8 +751,24 @@ const handleSendCheckout = async () => {
     }
 
     emit('send', messageText);
-  } catch (error) {
-    const errorMsg = error?.response?.data?.error || t(`${I18N}.SEND_ERROR`);
+  } catch (err) {
+    // Frappe sends validation errors in _server_messages (double-encoded JSON),
+    // NOT in .error. Parse _server_messages first, fall back to .error, then i18n default.
+    let errorMsg = '';
+    // eslint-disable-next-line no-underscore-dangle
+    const serverMsgs = err?.response?.data?._server_messages;
+    if (serverMsgs) {
+      try {
+        const parsed = JSON.parse(serverMsgs);
+        const firstMsg = parsed?.[0] ? JSON.parse(parsed[0]) : null;
+        errorMsg = firstMsg?.message || '';
+      } catch {
+        errorMsg = '';
+      }
+    }
+    if (!errorMsg) {
+      errorMsg = err?.response?.data?.error || t(`${I18N}.SEND_ERROR`);
+    }
     sendError.value = errorMsg;
     liveMessage.value = errorMsg;
 
@@ -370,13 +783,13 @@ const handleSendCheckout = async () => {
     );
     if (insufficientMatch) {
       const availableQty = parseInt(insufficientMatch[1], 10);
-      const itemCode = insufficientMatch[2];
-      errorItemCode.value = itemCode;
-      const item = orderItems.value.find(i => i.item_code === itemCode);
+      const matchedCode = insufficientMatch[2];
+      errorItemCode.value = matchedCode;
+      const item = orderItems.value.find(i => i.item_code === matchedCode);
       if (item && availableQty > 0) {
         item.qty = availableQty;
       } else if (item && availableQty === 0) {
-        removeFromOrder(itemCode);
+        removeFromOrder(item.id);
       }
     }
   } finally {
@@ -388,6 +801,20 @@ const handleSendCheckout = async () => {
 const handleKeydown = event => {
   if (event.key === 'Escape') {
     event.stopPropagation();
+    // Close sheets first before triggering discard dialog
+    // Priority: bundle config → variant picker → personalization → discard
+    if (showBundleConfig.value) {
+      closeBundleConfig();
+      return;
+    }
+    if (showVariantPicker.value) {
+      closeVariantPicker();
+      return;
+    }
+    if (showPersonalizationForm.value) {
+      closePersonalizationForm();
+      return;
+    }
     if (showDiscardConfirm.value) {
       cancelDiscard();
     } else if (hasItems.value) {
@@ -420,7 +847,7 @@ const handleKeydown = event => {
     });
   } else if (event.key === 'Enter' && focusedIndex.value >= 0) {
     event.preventDefault();
-    addToOrder(searchResults.value[focusedIndex.value]);
+    handleProductClick(searchResults.value[focusedIndex.value]);
   }
 };
 
@@ -614,6 +1041,7 @@ onUnmounted(() => {
             :class="{
               'bg-n-slate-3 ring-2 ring-n-blue-9': index === focusedIndex,
             }"
+            @click="handleProductClick(product)"
           >
             <!-- Thumbnail -->
             <div
@@ -637,11 +1065,34 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Name -->
+            <!-- Name + variant badge -->
             <div class="flex-1 min-w-0 mr-2">
               <p class="text-sm text-n-slate-12 truncate leading-tight">
                 {{ product.item_name }}
               </p>
+              <div class="flex gap-1 mt-0.5">
+                <span
+                  v-if="product.has_variants && product.variant_count > 0"
+                  class="inline-block text-[10px] text-n-slate-9 bg-n-slate-3 px-1.5 py-0.5 rounded"
+                >
+                  <!-- eslint-disable-next-line vue/no-bare-strings-in-template -->
+                  {{ product.variant_count }} variants
+                </span>
+                <!-- eslint-disable vue/no-bare-strings-in-template -->
+                <span
+                  v-if="product.is_bundle"
+                  class="inline-block text-[10px] text-n-slate-9 bg-n-slate-3 px-1.5 py-0.5 rounded"
+                >
+                  Bundle
+                </span>
+                <span
+                  v-if="product.has_customization"
+                  class="inline-block text-[10px] text-n-slate-9 bg-n-slate-3 px-1.5 py-0.5 rounded"
+                >
+                  Personalizable
+                </span>
+                <!-- eslint-enable vue/no-bare-strings-in-template -->
+              </div>
             </div>
 
             <!-- Price + stock -->
@@ -671,15 +1122,15 @@ onUnmounted(() => {
               :aria-label="t(`${I18N}.ADD_ARIA`, { name: product.item_name })"
               class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
               :class="
-                wasRecentlyAdded(product.item_code)
+                wasProductRecentlyAdded(product.item_code)
                   ? 'bg-n-green-3 text-n-green-11'
                   : 'bg-n-slate-3 hover:bg-n-blue-3 text-n-slate-11 hover:text-n-blue-11'
               "
-              @click.stop="addToOrder(product)"
+              @click.stop="handleProductClick(product)"
             >
               <Icon
                 :icon="
-                  wasRecentlyAdded(product.item_code)
+                  wasProductRecentlyAdded(product.item_code)
                     ? 'i-lucide-check'
                     : 'i-lucide-plus'
                 "
@@ -734,16 +1185,21 @@ onUnmounted(() => {
           <TransitionGroup name="order-item" tag="div" class="relative px-2">
             <div
               v-for="item in orderItems"
-              :key="item.item_code"
-              class="flex items-center py-1.5 px-1 rounded hover:bg-n-slate-3"
+              :key="item.id"
+              class="flex items-start py-1.5 px-1 rounded hover:bg-n-slate-3"
               :class="{
                 'border-l-2 border-n-ruby-9': errorItemCode === item.item_code,
-                'animate-pulse-highlight': highlightedItem === item.item_code,
+                'animate-pulse-highlight': highlightedItem === item.id,
+                'cursor-pointer':
+                  item.is_bundle ||
+                  item.selected_options?.length ||
+                  item.customizations,
               }"
+              @click="handleEditItem(item)"
             >
               <!-- Small thumbnail -->
               <div
-                class="flex-shrink-0 w-6 h-6 rounded bg-n-slate-3 overflow-hidden mr-2"
+                class="flex-shrink-0 w-6 h-6 rounded bg-n-slate-3 overflow-hidden mr-2 mt-0.5"
               >
                 <img
                   v-if="item.image_url"
@@ -763,11 +1219,72 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Name -->
+              <!-- Name + config summary -->
               <div class="flex-1 min-w-0 mr-2">
                 <p class="text-xs text-n-slate-12 truncate">
                   {{ item.item_name }}
                 </p>
+                <!-- Bundle children summary -->
+                <p
+                  v-if="item.bundle_children_summary"
+                  class="text-[10px] text-n-slate-9 truncate"
+                >
+                  {{ item.bundle_children_summary }}
+                </p>
+                <!-- Variant attributes: compact "M / Blue" format -->
+                <p
+                  v-if="
+                    !item.is_bundle &&
+                    item.selected_options &&
+                    item.selected_options.length
+                  "
+                  class="text-[10px] text-n-slate-9 truncate"
+                >
+                  {{ item.selected_options.map(o => o.value).join(' / ') }}
+                </p>
+                <!-- Personalization summary -->
+                <template v-if="item.customizations">
+                  <p class="text-[10px] text-n-slate-9 truncate">
+                    {{ item.customization_summary }}
+                  </p>
+                  <!-- Expanded details -->
+                  <div
+                    v-if="expandedItems.has(item.id) && item.customizations"
+                    class="mt-0.5"
+                  >
+                    <p
+                      v-for="(val, label) in item.customizations"
+                      :key="label"
+                      class="text-[10px] text-n-slate-9 truncate"
+                    >
+                      {{ label }}: {{ val === '1' ? 'Yes' : val || '-' }}
+                    </p>
+                  </div>
+                  <!-- "+N more" toggle -->
+                  <button
+                    v-if="
+                      item.customizations &&
+                      Object.keys(item.customizations).length > 2
+                    "
+                    class="text-[10px] text-n-blue-11 hover:underline mt-0.5"
+                    @click.stop="toggleExpand(item.id)"
+                  >
+                    <!-- eslint-disable-next-line vue/no-bare-strings-in-template -->
+                    {{
+                      expandedItems.has(item.id)
+                        ? 'Show less'
+                        : `+${Object.keys(item.customizations).length - 2} more`
+                    }}
+                  </button>
+                </template>
+                <!-- Edit hint for configured items -->
+                <p
+                  v-if="
+                    (item.selected_options?.length || item.customizations) &&
+                    !expandedItems.has(item.id)
+                  "
+                  class="text-[10px] text-n-blue-11 opacity-0 group-hover:opacity-100 transition-opacity"
+                />
               </div>
 
               <!-- Quantity stepper -->
@@ -777,7 +1294,7 @@ onUnmounted(() => {
                     t(`${I18N}.DECREASE_QTY_ARIA`, { name: item.item_name })
                   "
                   class="w-5 h-5 rounded-full flex items-center justify-center bg-n-slate-3 hover:bg-n-slate-4 text-n-slate-11"
-                  @click="decrementQty(item.item_code)"
+                  @click.stop="decrementQty(item.id)"
                 >
                   <Icon icon="i-lucide-minus" size="10" />
                 </button>
@@ -787,8 +1304,9 @@ onUnmounted(() => {
                   :value="item.qty"
                   :aria-label="t(`${I18N}.QTY_ARIA`, { name: item.item_name })"
                   class="w-8 h-5 text-center text-xs font-medium border border-n-slate-6 rounded bg-white dark:bg-n-slate-3 text-n-slate-12 focus:outline-none focus:ring-1 focus:ring-n-blue-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  @change="updateQty(item.item_code, $event.target.value)"
-                  @blur="handleQtyBlur(item.item_code, $event)"
+                  @click.stop
+                  @change="updateQty(item.id, $event.target.value)"
+                  @blur="handleQtyBlur(item.id, $event)"
                   @wheel.prevent
                 />
                 <button
@@ -796,7 +1314,7 @@ onUnmounted(() => {
                     t(`${I18N}.INCREASE_QTY_ARIA`, { name: item.item_name })
                   "
                   class="w-5 h-5 rounded-full flex items-center justify-center bg-n-slate-3 hover:bg-n-slate-4 text-n-slate-11"
-                  @click="incrementQty(item.item_code)"
+                  @click.stop="incrementQty(item.id)"
                 >
                   <Icon icon="i-lucide-plus" size="10" />
                 </button>
@@ -817,7 +1335,7 @@ onUnmounted(() => {
               <button
                 :aria-label="t(`${I18N}.REMOVE_ARIA`, { name: item.item_name })"
                 class="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center text-n-slate-9 hover:text-n-ruby-11 hover:bg-n-ruby-3"
-                @click="removeFromOrder(item.item_code)"
+                @click.stop="removeFromOrder(item.id)"
               >
                 <Icon icon="i-lucide-x" size="12" />
               </button>
@@ -877,6 +1395,48 @@ onUnmounted(() => {
       </template>
     </div>
 
+    <!-- Variant Picker Sheet (overlays bottom of panel) -->
+    <Transition name="variant-sheet">
+      <VariantPickerSheet
+        v-if="showVariantPicker && variantPickerProduct"
+        :product="variantPickerProduct"
+        :assistant-id="assistantId"
+        :has-customization="variantPickerProduct.has_customization || false"
+        :initial-selections="pendingVariantSelections"
+        @add="handleVariantAdd"
+        @close="closeVariantPicker"
+      />
+    </Transition>
+
+    <!-- Personalization Form Sheet (overlays bottom of panel) -->
+    <Transition name="variant-sheet">
+      <PersonalizationFormSheet
+        v-if="showPersonalizationForm && personalizationProduct"
+        :product="personalizationProduct"
+        :assistant-id="assistantId"
+        :variant-data="personalizationVariantData"
+        :initial-values="pendingPersonalizationValues"
+        :is-editing="!!editingItemId"
+        @add="handlePersonalizationAdd"
+        @close="closePersonalizationForm"
+        @back="handlePersonalizationBack"
+      />
+    </Transition>
+
+    <!-- Bundle Config Sheet (overlays bottom of panel) -->
+    <Transition name="variant-sheet">
+      <BundleConfigSheet
+        v-if="showBundleConfig && bundleConfigProduct"
+        :product="bundleConfigProduct"
+        :assistant-id="assistantId"
+        :initial-bundle-selections="pendingBundleSelections"
+        :initial-personalization-values="pendingPersonalizationValues"
+        :is-editing="!!editingItemId"
+        @add="handleBundleAdd"
+        @close="closeBundleConfig"
+      />
+    </Transition>
+
     <!-- Screen reader announcements -->
     <div aria-live="polite" class="sr-only">
       {{ liveMessage }}
@@ -928,5 +1488,22 @@ onUnmounted(() => {
     animation: none;
     background-color: var(--n-blue-3);
   }
+}
+
+/* Variant sheet slide-up transition */
+.variant-sheet-enter-active {
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.2s ease-out;
+}
+.variant-sheet-leave-active {
+  transition:
+    transform 0.15s ease-in,
+    opacity 0.15s ease-in;
+}
+.variant-sheet-enter-from,
+.variant-sheet-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
 }
 </style>

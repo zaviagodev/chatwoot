@@ -44,6 +44,26 @@ class Captain::ProductPolicy < ApplicationPolicy
     true
   end
 
+  def bundle_info?
+    true
+  end
+
+  def product_detail?
+    true
+  end
+
+  def variants?
+    true
+  end
+
+  def customization?
+    true
+  end
+
+  def upload_file?
+    true
+  end
+
   def item_groups?
     true
   end

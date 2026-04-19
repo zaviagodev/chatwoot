@@ -375,6 +375,7 @@
         "RETRY": "Retry",
         "IN_STOCK": "In stock",
         "OUT_OF_STOCK": "Out of stock",
+        "BUNDLE_BADGE": "Bundle",
         "ADD": "Add",
         "ADD_ARIA": "Add {name} to order",
         "ORDER_SUMMARY": "Order Summary",

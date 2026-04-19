@@ -3,6 +3,7 @@ import {
   ref,
   computed,
   shallowRef,
+  provide,
   onMounted,
   onUnmounted,
   nextTick,
@@ -17,6 +18,7 @@ import DeliveryAddressStep from './DeliveryAddressStep.vue';
 import ReviewStep from './ReviewStep.vue';
 import CartSidebar from './CartSidebar.vue';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog.vue';
+import BundleConfigSheet from 'dashboard/components-next/message/BundleConfigSheet.vue';
 import { formatPrice } from './formatPrice';
 
 const props = defineProps({
@@ -64,6 +66,14 @@ let lookupController = null;
 const sendState = ref('idle');
 const sendError = ref('');
 let autoCloseTimer = null;
+
+// Bundle config state
+const showBundleConfig = ref(false);
+const bundleConfigProduct = ref(null);
+
+// Bundle data cache (avoids re-fetching when clicking same bundle)
+const bundleCache = new Map();
+provide('bundleCache', bundleCache);
 
 // Close confirmation
 const showConfirmDialog = ref(false);
@@ -125,12 +135,13 @@ const resolvedAddress = computed(() => {
   return null;
 });
 
-// Cart methods
-function addToCart(product) {
+// Cart methods — pushToCart defined first to avoid no-use-before-define
+function pushToCart(product) {
   const existing = cartItems.value.find(
     item => item.item_code === product.item_code
   );
-  if (existing) {
+  if (existing && !product.is_bundle) {
+    // Non-bundle: increment qty. Bundles always add new line (different config).
     existing.qty += 1;
     highlightedItem.value = product.item_code;
     setTimeout(() => {
@@ -146,6 +157,11 @@ function addToCart(product) {
       currency: product.currency || 'THB',
       image_url: product.image_url || product.image || null,
       qty: 1,
+      is_bundle: product.is_bundle || false,
+      bundle_variant_selections: product.bundle_variant_selections || null,
+      customizations: product.customizations || null,
+      customization_summary: product.customization_summary || '',
+      bundle_children_summary: product.bundle_children_summary || '',
     });
   }
   liveMessage.value = t(`${I18N}.ADDED_ANNOUNCEMENT`, {
@@ -162,6 +178,34 @@ function addToCart(product) {
   }, 600);
   map.set(product.item_code, timeoutId);
   recentlyAdded.value = map;
+}
+
+function addToCart(product) {
+  // Bundle products need variant selection + personalization first
+  if (product.is_bundle) {
+    bundleConfigProduct.value = product;
+    showBundleConfig.value = true;
+    return;
+  }
+  pushToCart(product);
+}
+
+// Called after bundle config completes
+function handleBundleAdd(configuredItem) {
+  showBundleConfig.value = false;
+  bundleConfigProduct.value = null;
+  pushToCart({
+    item_code: configuredItem.item_code,
+    item_name: configuredItem.item_name,
+    price: (configuredItem.price ?? 0) + (configuredItem.addon_total ?? 0),
+    currency: configuredItem.currency || 'THB',
+    image_url: configuredItem.image || null,
+    is_bundle: true,
+    bundle_variant_selections: configuredItem.bundle_variant_selections,
+    customizations: configuredItem.customizations,
+    customization_summary: configuredItem.customization_summary,
+    bundle_children_summary: configuredItem.bundle_children_summary,
+  });
 }
 
 function removeFromCart(itemCode) {
@@ -309,11 +353,20 @@ async function handleSendCheckout() {
   try {
     const payload = {
       assistantId: props.assistantId,
-      items: cartItems.value.map(i => ({
-        item_code: i.item_code,
-        qty: i.qty,
-        rate: i.price || 0,
-      })),
+      items: cartItems.value.map(i => {
+        const item = {
+          item_code: i.item_code,
+          qty: i.qty,
+          rate: i.price || 0,
+        };
+        if (i.is_bundle && i.bundle_variant_selections) {
+          item.bundle_variant_selections = i.bundle_variant_selections;
+        }
+        if (i.customizations) {
+          item.customizations = i.customizations;
+        }
+        return item;
+      }),
       lineUserId: props.lineUserId || undefined,
       conversationId: props.conversationId || undefined,
       registerCustomer: registerCustomer.value || undefined,
@@ -679,6 +732,34 @@ function onBackdropClick(e) {
       @discard="onConfirmDiscard"
       @keep-editing="onKeepEditing"
     />
+
+    <!-- Bundle variant + personalization sheet -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-150"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showBundleConfig && bundleConfigProduct"
+          class="fixed inset-0 z-[10000] flex items-end justify-center bg-n-alpha-black1 backdrop-blur-[2px] sm:items-center"
+          @click.self="showBundleConfig = false"
+        >
+          <div
+            class="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-t-xl bg-n-solid-1 shadow-2xl sm:rounded-xl"
+          >
+            <BundleConfigSheet
+              :product="bundleConfigProduct"
+              :assistant-id="assistantId"
+              @add="handleBundleAdd"
+              @close="showBundleConfig = false"
+            />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </TeleportWithDirection>
 </template>
 

@@ -104,6 +104,21 @@ function onMinusClick() {
       >
         {{ item.item_name }}
       </p>
+      <p
+        v-if="item.bundle_children_summary || item.customization_summary"
+        class="truncate text-xs text-n-slate-9"
+        :title="
+          [item.bundle_children_summary, item.customization_summary]
+            .filter(Boolean)
+            .join(' · ')
+        "
+      >
+        {{
+          [item.bundle_children_summary, item.customization_summary]
+            .filter(Boolean)
+            .join(' · ')
+        }}
+      </p>
       <p class="text-xs text-n-slate-11">
         {{ formattedLineTotal }}
       </p>

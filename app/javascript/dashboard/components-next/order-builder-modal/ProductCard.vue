@@ -106,7 +106,7 @@ const ariaLabel = computed(() =>
         {{ formattedPrice }}
       </p>
 
-      <!-- Stock badge -->
+      <!-- Stock + bundle badges -->
       <div class="flex items-center gap-1.5">
         <span
           class="h-2 w-2 rounded-full"
@@ -117,6 +117,13 @@ const ariaLabel = computed(() =>
           :class="isOutOfStock ? 'text-n-slate-9' : 'text-n-slate-11'"
         >
           {{ stockLabel }}
+        </span>
+        <!-- eslint-disable-next-line vue/no-bare-strings-in-template -->
+        <span
+          v-if="product.is_bundle"
+          class="rounded bg-n-blue-3 px-1.5 py-0.5 text-[10px] font-medium text-n-blue-11"
+        >
+          {{ t('CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL.BUNDLE_BADGE') }}
         </span>
       </div>
     </div>

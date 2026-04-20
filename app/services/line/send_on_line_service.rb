@@ -105,7 +105,7 @@ class Line::SendOnLineService < Base::SendOnChannelService
     if is_itemized
       return {
         type: 'flex',
-        altText: message.content&.truncate(400) || 'Your order',
+        altText: message.content&.truncate(400) || 'Confirm Your Order',
         contents: build_checkout_bubble(products, attrs)
       }
     end
@@ -115,7 +115,7 @@ class Line::SendOnLineService < Base::SendOnChannelService
       bubbles = products.first(12).map { |product| build_simple_bubble(product, attrs) }
       return {
         type: 'flex',
-        altText: message.content&.truncate(400) || 'Your order',
+        altText: message.content&.truncate(400) || 'Confirm Your Order',
         contents: { type: 'carousel', contents: bubbles }
       }
     end
@@ -124,7 +124,7 @@ class Line::SendOnLineService < Base::SendOnChannelService
     product = attrs['product'] || products&.first || {}
     {
       type: 'flex',
-      altText: message.content&.truncate(400) || 'Your order',
+      altText: message.content&.truncate(400) || 'Confirm Your Order',
       contents: build_simple_bubble(product, attrs)
     }
   end
@@ -141,10 +141,9 @@ class Line::SendOnLineService < Base::SendOnChannelService
 
     body_contents = []
 
-    # Store name / header
-    store_name = attrs['store_name'] || 'Zaviago Store'
+    # Header
+    store_name = attrs['store_name'] || 'Confirm Your Order'
     body_contents << { type: 'text', text: store_name, weight: 'bold', size: 'xl', color: text_color }
-    body_contents << { type: 'text', text: attrs['title'] || 'Your Order', size: 'sm', color: muted_color, margin: 'sm' }
 
     # Customer info section (if provided)
     customer = attrs['customer']
@@ -192,7 +191,7 @@ class Line::SendOnLineService < Base::SendOnChannelService
         type: 'box', layout: 'vertical', paddingAll: '12px',
         contents: [{
           type: 'button', style: 'primary', color: accent, height: 'sm',
-          action: { type: 'uri', label: 'Checkout ชำระเงิน', uri: action_url }
+          action: { type: 'uri', label: 'View & Pay', uri: action_url }
         }]
       }
     end

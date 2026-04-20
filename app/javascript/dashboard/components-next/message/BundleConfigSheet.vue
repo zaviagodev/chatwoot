@@ -622,14 +622,12 @@ const handleRetry = () => fetchBundleInfo();
               <button
                 v-for="value in dim.values"
                 :key="value"
-                class="bundle-pill"
-                :class="{
-                  'bundle-pill--selected': isChildSelected(
-                    child.item_code,
-                    dim.name,
-                    value
-                  ),
-                }"
+                class="!border !border-solid !rounded-lg !px-3 !py-1.5 text-xs leading-tight cursor-pointer transition-all duration-150"
+                :class="
+                  isChildSelected(child.item_code, dim.name, value)
+                    ? '!border-n-blue-9 !bg-n-blue-9 text-white'
+                    : '!border-n-weak bg-n-solid-1 text-n-slate-12 hover:!border-n-slate-9'
+                "
                 @click="selectChildOption(child.item_code, dim.name, value)"
               >
                 {{ value }}
@@ -953,25 +951,8 @@ const handleRetry = () => fetchBundleInfo();
   flex-wrap: wrap;
   gap: 6px;
 }
-.bundle-pill {
-  border: 1px solid var(--s-200);
-  border-radius: 8px;
-  padding: 5px 12px;
-  font-size: 12px;
-  background: var(--white);
-  color: var(--s-800);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  line-height: 1.2;
-}
-.bundle-pill:hover {
-  border-color: var(--s-400);
-}
-.bundle-pill--selected {
-  background: var(--w-500);
-  color: var(--white);
-  border-color: var(--w-500);
-}
+/* bundle-pill styles moved to inline Tailwind classes (see template) —
+   _base.scss global button{border-0 border-none} overrides scoped CSS */
 
 .bundle-resolved {
   display: flex;

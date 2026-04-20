@@ -307,6 +307,8 @@ const fieldComponent = fieldType => {
     case 'Text Input':
       return PersonalizationTextField;
     case 'Select':
+    case 'Single Select':
+    case 'Multi Select':
       return PersonalizationSelectField;
     case 'Toggle':
       return PersonalizationToggleField;

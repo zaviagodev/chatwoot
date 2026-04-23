@@ -10,6 +10,7 @@ const emit = defineEmits(['addFromErp', 'addManually']);
     :title="$t('CAPTAIN_PRODUCTS.EMPTY_STATE.TITLE')"
     :subtitle="$t('CAPTAIN_PRODUCTS.EMPTY_STATE.SUBTITLE')"
     :action-perms="['administrator']"
+    :show-backdrop="false"
   >
     <template #actions>
       <div class="flex gap-3">

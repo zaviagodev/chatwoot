@@ -8,7 +8,7 @@ class Captain::ProductPolicy < ApplicationPolicy
   end
 
   def create?
-    @account_user.administrator?
+    true
   end
 
   def update?

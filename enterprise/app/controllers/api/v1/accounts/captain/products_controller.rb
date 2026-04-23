@@ -57,6 +57,11 @@ class Api::V1::Accounts::Captain::ProductsController < Api::V1::Accounts::BaseCo
     }
   end
 
+  def existing_item_codes
+    codes = @assistant.products.pluck(:item_code)
+    render json: { item_codes: codes }
+  end
+
   def enrich
     result = Captain::Products::AiEnrichService.new(product: @product).enrich
     if result[:error]

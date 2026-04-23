@@ -27,6 +27,10 @@ class Captain::ProductPolicy < ApplicationPolicy
     true
   end
 
+  def existing_item_codes?
+    true
+  end
+
   def enrich?
     @account_user.administrator?
   end

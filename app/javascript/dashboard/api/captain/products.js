@@ -36,6 +36,10 @@ class CaptainProducts extends ApiClient {
     return axios.get(`${this.url}/${assistantId}/products/sync_status`);
   }
 
+  getExistingItemCodes({ assistantId }) {
+    return axios.get(`${this.url}/${assistantId}/products/existing_item_codes`);
+  }
+
   enrich({ assistantId, id }) {
     return axios.post(`${this.url}/${assistantId}/products/${id}/enrich`);
   }

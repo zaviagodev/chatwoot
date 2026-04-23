@@ -10,6 +10,7 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import CaptainErpProxy from 'dashboard/api/captain/erpProxy';
+import CaptainProductsAPI from 'dashboard/api/captain/products';
 
 const props = defineProps({
   assistantId: {
@@ -47,9 +48,23 @@ const isSavingSetup = ref(false);
 
 const PAGE_SIZE = 100;
 
-const existingItemCodes = computed(() => {
-  return new Set(props.existingProducts.map(p => p.item_code));
-});
+// Fetch ALL existing item_codes from server (not just the paginated prop)
+// to prevent 422 duplicate errors when assistant has more products than one page
+const existingItemCodes = ref(
+  new Set(props.existingProducts.map(p => p.item_code))
+);
+
+const fetchExistingItemCodes = async () => {
+  try {
+    const { data } = await CaptainProductsAPI.getExistingItemCodes({
+      assistantId: props.assistantId,
+    });
+    const codes = data.item_codes || [];
+    existingItemCodes.value = new Set(codes);
+  } catch {
+    // Fallback to prop-based list if endpoint fails
+  }
+};
 
 const isItemAdded = itemCode => existingItemCodes.value.has(itemCode);
 
@@ -217,7 +232,14 @@ const handleAddSelected = async () => {
   const succeeded = results.filter(r => r.status === 'fulfilled').length;
   const failed = results.filter(r => r.status === 'rejected').length;
 
+  // Mark successfully added items as existing so they show "Already added"
   if (succeeded > 0) {
+    const newCodes = new Set(existingItemCodes.value);
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') newCodes.add(itemsToAdd[i].item_code);
+    });
+    existingItemCodes.value = newCodes;
+
     const msg =
       succeeded === 1
         ? t('CAPTAIN_PRODUCTS.TOAST.ADDED')
@@ -273,6 +295,7 @@ const handleClose = () => {
 };
 
 const handleOpen = () => {
+  fetchExistingItemCodes();
   searchProducts();
   fetchItemGroups();
 };

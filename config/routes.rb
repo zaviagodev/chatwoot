@@ -76,6 +76,7 @@ Rails.application.routes.draw do
                 collection do
                   post :sync
                   get :sync_status
+                  get :existing_item_codes
                   post :provision_tools
                   post :upload_image
                 end

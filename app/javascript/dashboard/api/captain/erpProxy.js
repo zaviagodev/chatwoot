@@ -6,11 +6,12 @@ class CaptainErpProxy extends ApiClient {
     super('captain/assistants', { accountScoped: true });
   }
 
-  searchProducts({ query, itemGroup, page = 1, assistantId } = {}) {
+  searchProducts({ query, itemGroup, page = 1, pageSize, assistantId } = {}) {
     return axios.post(`${this.url}/${assistantId}/erp_proxy/search_products`, {
       query,
       item_group: itemGroup,
       page,
+      page_size: pageSize,
     });
   }
 

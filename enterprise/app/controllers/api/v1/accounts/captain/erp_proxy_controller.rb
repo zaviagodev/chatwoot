@@ -8,7 +8,7 @@ class Api::V1::Accounts::Captain::ErpProxyController < Api::V1::Accounts::BaseCo
       query: params[:query],
       item_group: params[:item_group],
       page: (params[:page] || 1).to_i,
-      page_size: (params[:page_size] || 20).to_i
+      page_size: (params[:page_size] || 100).to_i
     )
     render_result(result)
   end

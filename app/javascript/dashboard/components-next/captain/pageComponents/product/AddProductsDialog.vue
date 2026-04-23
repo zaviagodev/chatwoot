@@ -33,14 +33,19 @@ const searchResults = ref([]);
 const itemGroups = ref([]);
 const selectedItems = ref(new Set());
 const isSearching = ref(false);
+const isLoadingMore = ref(false);
 const isAdding = ref(false);
 const hasSearched = ref(false);
+const currentPage = ref(1);
+const totalItems = ref(0);
 
 // Setup state
 const showSetup = ref(false);
 const setupCompany = ref('');
 const setupWarehouse = ref('');
 const isSavingSetup = ref(false);
+
+const PAGE_SIZE = 100;
 
 const existingItemCodes = computed(() => {
   return new Set(props.existingProducts.map(p => p.item_code));
@@ -49,6 +54,27 @@ const existingItemCodes = computed(() => {
 const isItemAdded = itemCode => existingItemCodes.value.has(itemCode);
 
 const selectedCount = computed(() => selectedItems.value.size);
+
+const hasMoreItems = computed(
+  () => searchResults.value.length < totalItems.value
+);
+
+// Selectable items = visible items that aren't already added
+const selectableItems = computed(() =>
+  searchResults.value.filter(item => !isItemAdded(item.item_code))
+);
+
+const allSelectableChecked = computed(
+  () =>
+    selectableItems.value.length > 0 &&
+    selectableItems.value.every(item => selectedItems.value.has(item.item_code))
+);
+
+const someSelectableChecked = computed(
+  () =>
+    !allSelectableChecked.value &&
+    selectableItems.value.some(item => selectedItems.value.has(item.item_code))
+);
 
 const toggleSelection = itemCode => {
   if (isItemAdded(itemCode)) return;
@@ -61,24 +87,54 @@ const toggleSelection = itemCode => {
   selectedItems.value = newSet;
 };
 
-const searchProducts = async (page = 1) => {
-  isSearching.value = true;
+const toggleSelectAll = () => {
+  const newSet = new Set(selectedItems.value);
+  if (allSelectableChecked.value) {
+    // Deselect all visible selectable items
+    selectableItems.value.forEach(item => newSet.delete(item.item_code));
+  } else {
+    // Select all visible selectable items
+    selectableItems.value.forEach(item => newSet.add(item.item_code));
+  }
+  selectedItems.value = newSet;
+};
+
+const searchProducts = async (page = 1, append = false) => {
+  if (!append) {
+    isSearching.value = true;
+  } else {
+    isLoadingMore.value = true;
+  }
   hasSearched.value = true;
   try {
     const { data } = await CaptainErpProxy.searchProducts({
       query: searchQuery.value,
       itemGroup: selectedItemGroup.value,
       page,
+      pageSize: PAGE_SIZE,
       assistantId: props.assistantId,
     });
     const items = data.products || data.data || data || [];
-    searchResults.value = Array.isArray(items) ? items : [];
+    const parsed = Array.isArray(items) ? items : [];
+    if (append) {
+      searchResults.value = [...searchResults.value, ...parsed];
+    } else {
+      searchResults.value = parsed;
+    }
+    totalItems.value = data.total ?? parsed.length;
+    currentPage.value = page;
   } catch {
-    searchResults.value = [];
+    if (!append) searchResults.value = [];
     useAlert(t('CAPTAIN_PRODUCTS.TOAST.SYNC_ERROR'));
   } finally {
     isSearching.value = false;
+    isLoadingMore.value = false;
   }
+};
+
+const loadMore = () => {
+  if (isLoadingMore.value || !hasMoreItems.value) return;
+  searchProducts(currentPage.value + 1, true);
 };
 
 const debouncedSearch = debounce(() => {
@@ -294,6 +350,31 @@ defineExpose({ dialogRef });
       </select>
     </div>
 
+    <!-- Select all + count bar -->
+    <div
+      v-if="searchResults.length > 0"
+      class="flex items-center justify-between px-3 py-2 mb-2 rounded-lg bg-n-alpha-1"
+    >
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          :checked="allSelectableChecked"
+          :indeterminate="someSelectableChecked"
+          class="w-4 h-4 rounded"
+          @change="toggleSelectAll"
+        />
+        <!-- eslint-disable vue/no-bare-strings-in-template -->
+        <span class="text-xs font-medium text-n-slate-11">
+          Select all ({{ selectableItems.length }})
+        </span>
+        <!-- eslint-enable vue/no-bare-strings-in-template -->
+      </label>
+      <span class="text-xs text-n-slate-9">
+        <!-- eslint-disable-next-line vue/no-bare-strings-in-template -->
+        {{ searchResults.length }} of {{ totalItems }} loaded
+      </span>
+    </div>
+
     <!-- Results -->
     <div
       class="flex flex-col gap-2 min-h-[200px] max-h-[400px] overflow-y-auto"
@@ -358,6 +439,21 @@ defineExpose({ dialogRef });
           >
             {{ $t('CAPTAIN_PRODUCTS.ADD_DIALOG.ALREADY_ADDED') }}
           </span>
+        </div>
+
+        <!-- Load more button -->
+        <div v-if="hasMoreItems" class="flex justify-center py-3">
+          <Button
+            variant="faded"
+            color="slate"
+            size="small"
+            :is-loading="isLoadingMore"
+            @click="loadMore"
+          >
+            <!-- eslint-disable vue/no-bare-strings-in-template -->
+            Load more ({{ searchResults.length }} / {{ totalItems }})
+            <!-- eslint-enable vue/no-bare-strings-in-template -->
+          </Button>
         </div>
       </template>
     </div>

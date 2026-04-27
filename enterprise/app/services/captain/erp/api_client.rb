@@ -1,4 +1,6 @@
 class Captain::Erp::ApiClient
+  RetryableServerError = Class.new(StandardError)
+
   BASE_PATH = '/api/method/zaviago_backend.api.captain_tools'.freeze
   TIMEOUT = 10
   CHECKOUT_TIMEOUT = 30
@@ -121,13 +123,14 @@ class Captain::Erp::ApiClient
         headers: { 'Content-Type' => 'application/json', 'X-API-Key' => @api_key },
         timeout: request_timeout
       )
-      if !response.success? && RETRYABLE_STATUSES.include?(response.code) && retries < MAX_RETRIES
-        retries += 1
-        sleep(RETRY_DELAY)
-        retry
-      end
+      raise RetryableServerError if !response.success? && RETRYABLE_STATUSES.include?(response.code) && retries < MAX_RETRIES
+
       handle_response(response)
-    rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
+    rescue RetryableServerError
+      retries += 1
+      sleep(RETRY_DELAY)
+      retry
+    rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED
       if retries < MAX_RETRIES
         retries += 1
         sleep(RETRY_DELAY)

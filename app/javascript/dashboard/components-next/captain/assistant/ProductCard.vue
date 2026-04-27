@@ -134,7 +134,7 @@ const stockDotColor = computed(() => {
 const isErpSynced = computed(() => !!props.erpCompany);
 
 const sourceLabel = computed(() => {
-  if (isErpSynced.value) return 'ERPNext';
+  if (isErpSynced.value) return t('CAPTAIN_PRODUCTS.CARD.SOURCE_WORKSPACE');
   return t('CAPTAIN_PRODUCTS.CARD.SOURCE_MANUAL');
 });
 

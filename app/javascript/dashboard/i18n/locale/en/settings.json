@@ -448,7 +448,8 @@
       "UNKNOWN_STOCK": "Stock unknown",
       "SOURCE_AUTO": "Auto",
       "SOURCE_AI": "AI",
-      "SOURCE_MANUAL": "Manual"
+      "SOURCE_MANUAL": "Manual",
+      "SOURCE_WORKSPACE": "Workspace"
     },
     "OPTIONS": {
       "VIEW_DESCRIPTION": "View description",
@@ -740,7 +741,7 @@
       "REMOVE_CONFIRM_MESSAGE": "{count} variants using \"{value}\" will be removed. Their stock and pricing data will be lost.",
       "REMOVE_CONFIRM": "Remove",
       "REMOVE_CANCEL": "Keep",
-      "READ_ONLY_HINT": "Options are managed in ERPNext. Re-sync to update.",
+      "READ_ONLY_HINT": "Options are managed in Workspace. Re-sync to update.",
       "CLOSE": "Close"
     },
     "TABLE": {

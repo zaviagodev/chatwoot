@@ -319,7 +319,7 @@
         "ERROR_MESSAGE": "Something went wrong",
         "RETRY": "Retry",
         "NO_RESULTS": "No products found for \"{query}\"",
-        "NO_PRODUCTS": "No products found. Add products in your ERP to start building orders.",
+        "NO_PRODUCTS": "No products found. Add products in your Workspace to start building orders.",
         "PRICE_UNAVAILABLE": "Price unavailable",
         "ADD_ARIA": "Add {name} to order",
         "ORDER_LABEL": "Order",
@@ -595,7 +595,7 @@
     },
     "ERP_CUSTOMER_CARD": {
       "CUSTOMER": "Customer",
-      "NOT_LINKED": "Not linked to ERP",
+      "NOT_LINKED": "Not linked to Workspace",
       "ORDERS_LABEL": "orders",
       "LAST_ORDER": "Last: {date}",
       "MEMBER_SINCE": "Member since",

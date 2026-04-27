@@ -1,8 +1,12 @@
 class Captain::Erp::ApiClient
   BASE_PATH = '/api/method/zaviago_backend.api.captain_tools'.freeze
   TIMEOUT = 10
+  CHECKOUT_TIMEOUT = 30
   BATCH_TIMEOUT = 15
   BATCH_SIZE = 100
+  RETRYABLE_STATUSES = [502, 503].freeze
+  MAX_RETRIES = 1
+  RETRY_DELAY = 2
 
   def initialize(assistant:)
     @assistant = assistant
@@ -30,7 +34,8 @@ class Captain::Erp::ApiClient
             customer_email: customer_email, address_name: address_name,
             address_data: address_data, line_user_id: line_user_id,
             register_customer: register_customer,
-            conversation_id: conversation_id)
+            conversation_id: conversation_id,
+            timeout: CHECKOUT_TIMEOUT)
   end
 
   def lookup_line_customer(line_user_id:)
@@ -68,7 +73,7 @@ class Captain::Erp::ApiClient
     )
     handle_response(response)
   rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
-    { error: "ERPNext connection failed: #{e.class.name}", status: 503 }
+    { error: "Workspace connection timed out. Please try again.", status: 503 }
   end
 
   def get_stock_batch(item_codes:, warehouse: nil)
@@ -91,6 +96,8 @@ class Captain::Erp::ApiClient
     @assistant.erp_tenant_key
   end
 
+  # Fast-fail for browse/search endpoints. No retry — UI shows a retry button.
+  # For user-action endpoints (checkout, address lookup) that warrant auto-retry, use post_to.
   def post(endpoint, params)
     request_timeout = params.delete(:timeout) || TIMEOUT
     response = HTTParty.post(
@@ -101,27 +108,40 @@ class Captain::Erp::ApiClient
     )
     handle_response(response)
   rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
-    { error: "ERPNext connection failed: #{e.class.name}", status: 503 }
+    { error: "Workspace connection timed out. Please try again.", status: 503 }
   end
 
   def post_to(full_method, params)
     request_timeout = params.delete(:timeout) || TIMEOUT
-    response = HTTParty.post(
-      "#{@base_url}/api/method/#{full_method}",
-      body: params.compact.to_json,
-      headers: { 'Content-Type' => 'application/json', 'X-API-Key' => @api_key },
-      timeout: request_timeout
-    )
-    handle_response(response)
-  rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
-    { error: "ERPNext connection failed: #{e.class.name}", status: 503 }
+    retries = 0
+    begin
+      response = HTTParty.post(
+        "#{@base_url}/api/method/#{full_method}",
+        body: params.compact.to_json,
+        headers: { 'Content-Type' => 'application/json', 'X-API-Key' => @api_key },
+        timeout: request_timeout
+      )
+      if !response.success? && RETRYABLE_STATUSES.include?(response.code) && retries < MAX_RETRIES
+        retries += 1
+        sleep(RETRY_DELAY)
+        retry
+      end
+      handle_response(response)
+    rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
+      if retries < MAX_RETRIES
+        retries += 1
+        sleep(RETRY_DELAY)
+        retry
+      end
+      { error: "Workspace connection timed out. Please try again.", status: 503 }
+    end
   end
 
   def handle_response(response)
     unless response.success?
       parsed = response.parsed_response
       frappe_msg = extract_frappe_error(parsed)
-      return { error: frappe_msg || 'ERPNext request failed', status: response.code }
+      return { error: frappe_msg || 'Request failed. Please try again.', status: response.code }
     end
 
     response.parsed_response&.dig('message') || {}

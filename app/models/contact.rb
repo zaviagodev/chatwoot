@@ -55,6 +55,13 @@ class Contact < ApplicationRecord
             allow_blank: true, uniqueness: { scope: [:account_id] },
             format: { with: /\+[1-9]\d{1,14}\z/, message: I18n.t('errors.contacts.phone_number.invalid') }
 
+  # Transient attribute set by ContactInboxWithContactBuilder when creating
+  # a new contact with a profile picture URL. The after_create_commit callback
+  # defers the avatar download job until the outermost transaction commits,
+  # preventing a Sidekiq race condition where the job runs before the Contact
+  # row is visible to other DB connections.
+  attr_accessor :pending_avatar_url
+
   belongs_to :account
   has_many :conversations, dependent: :destroy_async
   has_many :conversation_contacts, dependent: :destroy_async
@@ -65,7 +72,7 @@ class Contact < ApplicationRecord
   has_many :messages, as: :sender, dependent: :destroy_async
   has_many :notes, dependent: :destroy_async
   before_validation :prepare_contact_attributes
-  after_create_commit :dispatch_create_event, :ip_lookup
+  after_create_commit :dispatch_create_event, :ip_lookup, :enqueue_pending_avatar_sync
   after_update_commit :dispatch_update_event
   after_destroy_commit :dispatch_destroy_event
   before_save :sync_contact_attributes
@@ -201,6 +208,13 @@ class Contact < ApplicationRecord
     return unless account.feature_enabled?('ip_lookup')
 
     ContactIpLookupJob.perform_later(self)
+  end
+
+  def enqueue_pending_avatar_sync
+    return if pending_avatar_url.blank?
+    return if avatar.attached?
+
+    ::Avatar::AvatarFromUrlJob.perform_later(self, pending_avatar_url)
   end
 
   def phone_number_format

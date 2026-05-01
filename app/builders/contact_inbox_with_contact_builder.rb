@@ -20,7 +20,11 @@ class ContactInboxWithContactBuilder
     ActiveRecord::Base.transaction(requires_new: true) do
       build_contact_with_contact_inbox
     end
-    update_contact_avatar(@contact) unless @contact.avatar.attached?
+    # For newly created contacts, the avatar job is deferred via
+    # Contact#after_create_commit to avoid a Sidekiq race condition
+    # (job deserializes before the outer transaction commits).
+    # For existing contacts, enqueue directly — they're already in the DB.
+    update_contact_avatar(@contact) if !@contact.previously_new_record? && !@contact.avatar.attached?
     @contact_inbox
   end
 
@@ -56,7 +60,9 @@ class ContactInboxWithContactBuilder
       identifier: contact_attributes[:identifier],
       additional_attributes: contact_attributes[:additional_attributes],
       custom_attributes: contact_attributes[:custom_attributes]
-    )
+    ).tap do |contact|
+      contact.pending_avatar_url = contact_attributes[:avatar_url]
+    end
   end
 
   def find_contact

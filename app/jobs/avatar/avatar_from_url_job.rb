@@ -9,6 +9,13 @@ class Avatar::AvatarFromUrlJob < ApplicationJob
   include UrlHelper
   queue_as :purgable
 
+  # Override ApplicationJob's discard_on DeserializationError for this job.
+  # When a Contact is created inside a DB transaction and this job is enqueued
+  # within the same transaction, Sidekiq may execute before the transaction
+  # commits — the Contact row isn't visible yet, causing DeserializationError.
+  # Retrying after a short delay gives the transaction time to commit.
+  retry_on ActiveJob::DeserializationError, wait: 5.seconds, attempts: 3
+
   MAX_DOWNLOAD_SIZE = 15 * 1024 * 1024
   RATE_LIMIT_WINDOW = 1.minute
 

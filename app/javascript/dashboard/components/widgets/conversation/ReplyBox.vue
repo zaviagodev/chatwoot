@@ -546,10 +546,8 @@ export default {
     // Listen for checkout link from parent (zvgnext ChatOrderSheet)
     this.handleParentMessage = event => {
       if (event.data?.type === 'CHATWOOT_INSERT_CHECKOUT_LINK') {
-        const { url } = event.data.payload || {};
-        if (url) {
-          this.addIntoEditor(url);
-        }
+        const payload = event.data.payload || {};
+        this.sendOrderCheckoutLink(payload);
       }
     };
     window.addEventListener('message', this.handleParentMessage);

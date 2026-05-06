@@ -543,6 +543,16 @@ export default {
     // working even if the editor is focussed.
     document.addEventListener('paste', this.onPaste);
     document.addEventListener('keydown', this.handleKeyEvents);
+    // Listen for checkout link from parent (zvgnext ChatOrderSheet)
+    this.handleParentMessage = event => {
+      if (event.data?.type === 'CHATWOOT_INSERT_CHECKOUT_LINK') {
+        const { url } = event.data.payload || {};
+        if (url) {
+          this.addIntoEditor(url);
+        }
+      }
+    };
+    window.addEventListener('message', this.handleParentMessage);
     this.setCCAndToEmailsFromLastChat();
     this.doAutoSaveDraft = debounce(
       () => {
@@ -573,6 +583,9 @@ export default {
   unmounted() {
     document.removeEventListener('paste', this.onPaste);
     document.removeEventListener('keydown', this.handleKeyEvents);
+    if (this.handleParentMessage) {
+      window.removeEventListener('message', this.handleParentMessage);
+    }
     emitter.off(BUS_EVENTS.TOGGLE_REPLY_TO_MESSAGE, this.fetchAndSetReplyTo);
     emitter.off(BUS_EVENTS.INSERT_INTO_NORMAL_EDITOR, this.addIntoEditor);
     emitter.off(BUS_EVENTS.SET_REPLY_EDITOR_CONTENT, this.setEditorContent);
@@ -803,16 +816,16 @@ export default {
     toggleOrderBuilderPanel() {
       this.showProductPickerPanel = false;
       this.showCardPickerPanel = false;
-      // Save state before closing so badge shows item count
-      if (this.showOrderBuilderPanel && this.$refs.orderBuilderModal) {
-        const state = this.$refs.orderBuilderModal.getState();
-        if (state.cartItems && state.cartItems.length > 0) {
-          this.orderBuilderStates[this.currentChat.id] = state;
-        } else {
-          delete this.orderBuilderStates[this.currentChat.id];
-        }
-      }
-      this.showOrderBuilderPanel = !this.showOrderBuilderPanel;
+      // Send PostMessage to parent (zvgnext) to open the React ChatOrderSheet
+      window.parent.postMessage(
+        {
+          type: 'CHATWOOT_OPEN_ORDER_BUILDER',
+          payload: {
+            conversation_id: this.currentChat?.id,
+          },
+        },
+        '*'
+      );
     },
     saveAndCloseOrderBuilder() {
       // Save state before closing so badge shows item count

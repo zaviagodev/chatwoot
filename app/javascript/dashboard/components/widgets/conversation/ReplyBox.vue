@@ -926,6 +926,8 @@ export default {
         attrs.products = payload.products;
         attrs.customer = payload.customer;
         attrs.grand_total = payload.grand_total;
+        attrs.subtotal = payload.subtotal;
+        attrs.shipping = payload.shipping;
         attrs.checkout_url = payload.checkout_url;
       } else if (payload.product) {
         attrs.product = payload.product;

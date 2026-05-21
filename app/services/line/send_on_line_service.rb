@@ -181,9 +181,10 @@ class Line::SendOnLineService < Base::SendOnChannelService
 
     # Totals section
     currency = products.first&.dig('currency') || 'THB'
-    subtotal = products.sum { |p| (p['price'].to_f) * (p['qty'] || 1).to_i }
+    product_subtotal = products.sum { |p| (p['price'].to_f) * (p['qty'] || 1).to_i }
+    subtotal = attrs['subtotal'].present? ? attrs['subtotal'].to_f : product_subtotal
     shipping = attrs['shipping'].to_f
-    grand_total = attrs['grand_total'] || (subtotal + shipping)
+    grand_total = attrs['grand_total'].present? ? attrs['grand_total'].to_f : (subtotal + shipping)
 
     body_contents << { type: 'separator', margin: 'lg' }
     totals_contents = []

@@ -26,8 +26,20 @@ describe('#KeyboardHelpers', () => {
   });
 
   describe('#hasPressedCommand', () => {
-    it('return correct values', () => {
-      expect(hasPressedCommand({ metaKey: true })).toEqual(true);
+    it('returns true for metaKey (macOS Cmd)', () => {
+      expect(hasPressedCommand({ metaKey: true, ctrlKey: false })).toEqual(
+        true
+      );
+    });
+    it('returns true for ctrlKey (Windows/Linux Ctrl)', () => {
+      expect(hasPressedCommand({ metaKey: false, ctrlKey: true })).toEqual(
+        true
+      );
+    });
+    it('returns false when neither is pressed', () => {
+      expect(hasPressedCommand({ metaKey: false, ctrlKey: false })).toEqual(
+        false
+      );
     });
   });
 });

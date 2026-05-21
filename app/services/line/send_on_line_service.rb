@@ -56,12 +56,28 @@ class Line::SendOnLineService < Base::SendOnChannelService
       # Support only image and video for now, https://developers.line.biz/en/reference/messaging-api/#image-message
       next unless attachment.file_type == 'image' || attachment.file_type == 'video'
 
+      url = persistent_url_for(attachment)
       {
         type: attachment.file_type,
-        originalContentUrl: attachment.download_url,
-        previewImageUrl: attachment.download_url
+        originalContentUrl: url,
+        previewImageUrl: url
       }
     end
+  end
+
+  # Upload attachment to R2 CDN and return a persistent URL.
+  # ActiveStorage disk URLs expire in ~5 minutes, but LINE fetches images
+  # asynchronously — by the time the customer opens the chat, the URL is dead.
+  # R2 CDN URLs are permanent and publicly accessible.
+  def persistent_url_for(attachment)
+    return attachment.download_url unless R2UploadService.configured?
+
+    blob = attachment.file&.blob
+    return attachment.download_url unless blob
+
+    account_id = message.conversation&.account_id || 'unknown'
+    cdn_url = R2UploadService.upload_blob(blob, prefix: "chatwoot/#{account_id}")
+    cdn_url || attachment.download_url
   end
 
   # https://developers.line.biz/en/reference/messaging-api/#text-message

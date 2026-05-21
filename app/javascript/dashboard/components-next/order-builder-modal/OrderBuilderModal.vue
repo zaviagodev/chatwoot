@@ -413,7 +413,7 @@ async function handleSendCheckout() {
       message: `${t(`${I18N}.CARD_ALT_TEXT`, { total: formattedTotal })}`,
       products: cartItems.value.map(i => ({
         item_name: i.item_name,
-        price: i.price || 0,
+        price: (i.price || 0) + (i.addon_total || 0),
         qty: i.qty || 1,
         currency: i.currency || curr,
         image_url: i.image_url || undefined,

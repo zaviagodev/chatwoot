@@ -22,7 +22,7 @@ const formattedSubtotal = computed(() => {
     return t(`${I18N}.ESTIMATED_TOTAL_UNAVAILABLE`);
   }
   const total = props.items.reduce(
-    (sum, item) => sum + item.price * item.qty,
+    (sum, item) => sum + (item.price + (item.addon_total || 0)) * item.qty,
     0
   );
   const curr = props.items[0]?.currency || 'THB';
@@ -49,7 +49,7 @@ const formattedSubtotal = computed(() => {
     </div>
 
     <!-- Cart content area -->
-    <div class="flex flex-1 flex-col">
+    <div class="flex min-h-0 flex-1 flex-col">
       <!-- Empty cart state -->
       <div
         v-if="items.length === 0"
@@ -72,7 +72,7 @@ const formattedSubtotal = computed(() => {
       </div>
 
       <!-- Cart items list -->
-      <div v-else class="flex-1 overflow-y-auto">
+      <div v-else class="min-h-0 flex-1 overflow-y-auto">
         <TransitionGroup
           tag="div"
           enter-active-class="transition-all duration-150 ease-out"

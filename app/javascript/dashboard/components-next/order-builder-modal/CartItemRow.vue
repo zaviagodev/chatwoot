@@ -21,7 +21,8 @@ const imageUrl = computed(() => props.item.image_url || props.item.image || '');
 const formattedLineTotal = computed(() => {
   const { price, currency, qty } = props.item;
   if (!price && price !== 0) return '';
-  const total = price * qty;
+  const addonTotal = props.item.addon_total || 0;
+  const total = (price + addonTotal) * qty;
   const curr = currency || 'THB';
   try {
     return new Intl.NumberFormat('en-US', {
@@ -99,7 +100,7 @@ function onMinusClick() {
     <!-- Name + line total -->
     <div class="min-w-0 flex-1">
       <p
-        class="truncate text-sm font-medium text-n-slate-12"
+        class="line-clamp-2 text-sm font-medium leading-tight text-n-slate-12"
         :title="item.item_name"
       >
         {{ item.item_name }}
@@ -152,7 +153,7 @@ function onMinusClick() {
         type="text"
         inputmode="numeric"
         :value="item.qty"
-        class="w-10 rounded-md border border-n-weak bg-n-slate-2 text-center text-sm text-n-slate-12 transition-transform focus:border-n-blue-9 focus:outline-none focus:ring-1 focus:ring-n-blue-9"
+        class="!h-7 !w-10 rounded-md border border-n-weak bg-n-slate-2 text-center !text-sm text-n-slate-12 transition-transform focus:border-n-blue-9 focus:outline-none focus:ring-1 focus:ring-n-blue-9"
         :class="{ 'scale-110': justChanged }"
         :aria-label="t(`${I18N}.ITEMS_COUNT_SINGULAR`, { count: item.qty })"
         @input="onQtyInput"

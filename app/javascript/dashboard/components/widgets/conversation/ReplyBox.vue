@@ -725,7 +725,8 @@ export default {
           allowOnFocusedInput: true,
         },
         '$mod+Enter': {
-          action: () => {
+          action: e => {
+            e.preventDefault();
             if (
               this.copilot.isActive.value &&
               this.copilot.isContentReady.value

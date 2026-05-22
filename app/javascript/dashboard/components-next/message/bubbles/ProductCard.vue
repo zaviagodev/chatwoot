@@ -25,16 +25,18 @@ const carouselCount = computed(() =>
   isCarousel.value ? contentAttributes.value.products.length : 0
 );
 
-const hasImage = computed(() => !!product.value.image_url);
+const hasImage = computed(
+  () => !!(product.value.imageUrl || product.value.image_url)
+);
 
 const isCheckoutCard = computed(
-  () => isCarousel.value && contentAttributes.value?.grand_total != null
+  () => isCarousel.value && contentAttributes.value?.grandTotal != null
 );
 
 const displayTotal = computed(() => {
   // For itemized checkout cards, use the server grand_total (source of truth)
-  if (isCarousel.value && contentAttributes.value?.grand_total != null) {
-    return contentAttributes.value.grand_total;
+  if (isCarousel.value && contentAttributes.value?.grandTotal != null) {
+    return contentAttributes.value.grandTotal;
   }
   // Single product card — show product price
   return product.value.price;
@@ -65,14 +67,14 @@ const formattedPrice = computed(() => {
         class="w-full aspect-video bg-n-slate-3 overflow-hidden"
       >
         <img
-          :src="product.image_url"
-          :alt="product.item_name"
+          :src="product.imageUrl || product.image_url"
+          :alt="product.itemName || product.item_name"
           class="w-full h-full object-cover"
         />
       </div>
       <div class="p-3">
         <p class="text-sm font-semibold mb-1 text-n-slate-12 leading-snug">
-          {{ product.item_name }}
+          {{ product.itemName || product.item_name }}
         </p>
         <!-- Checkout card: show grand total + item count -->
         <template v-if="isCheckoutCard">

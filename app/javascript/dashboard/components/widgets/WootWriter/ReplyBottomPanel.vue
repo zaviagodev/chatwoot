@@ -134,6 +134,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    showPosOrderButton: {
+      type: Boolean,
+      default: false,
+    },
     savedOrderItemCount: {
       type: Number,
       default: 0,
@@ -148,6 +152,7 @@ export default {
     'toggleProductsPicker',
     'toggleCardsPicker',
     'toggleOrderBuilder',
+    'togglePosOrder',
   ],
   setup() {
     const { setSignatureFlagForInbox, fetchSignatureFlagFromUISettings } =
@@ -443,6 +448,15 @@ export default {
           {{ savedOrderItemCount }}
         </span>
       </div>
+      <NextButton
+        v-if="showPosOrderButton"
+        v-tooltip.top-end="'POS Order (V2)'"
+        icon="i-ph-storefront"
+        slate
+        faded
+        sm
+        @click="$emit('togglePosOrder')"
+      />
     </div>
     <div class="right-wrap">
       <NextButton

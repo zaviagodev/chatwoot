@@ -149,6 +149,7 @@ export default {
       showProductPickerPanel: false,
       showCardPickerPanel: false,
       showOrderBuilderPanel: false,
+      showPosOrderIframe: false,
       orderBuilderStates: {},
       productSendPending: false,
     };
@@ -195,6 +196,11 @@ export default {
     },
     currentContactName() {
       return this.currentContact?.name || '';
+    },
+    posIframeUrl() {
+      const tenantKey = this.copilotAssistant?.erp_tenant_key;
+      if (!tenantKey) return null;
+      return `https://${tenantKey}.shop.zaviago.com/pos?mode=chat`;
     },
     shouldShowReplyToMessage() {
       return (
@@ -474,6 +480,7 @@ export default {
           }
         }
         this.showOrderBuilderPanel = false;
+        this.showPosOrderIframe = false;
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
         this.copilot.clearDraftHistory();
@@ -545,9 +552,17 @@ export default {
     document.addEventListener('keydown', this.handleKeyEvents);
     // Listen for checkout link from parent (zvgnext ChatOrderSheet)
     this.handleParentMessage = event => {
+      // V1: checkout link from zvgnext ChatOrderSheet
       if (event.data?.type === 'CHATWOOT_INSERT_CHECKOUT_LINK') {
         const payload = event.data.payload || {};
         this.sendOrderCheckoutLink(payload);
+      }
+      // V2: POS iframe PostMessage (pos:order-shared, pos:close)
+      if (
+        event.data?.type?.startsWith('pos:') &&
+        /^https:\/\/[a-z0-9-]+\.shop\.zaviago\.com$/.test(event.origin)
+      ) {
+        this.handlePosMessage(event.data);
       }
     };
     window.addEventListener('message', this.handleParentMessage);
@@ -841,6 +856,42 @@ export default {
     discardOrderBuilder() {
       this.showOrderBuilderPanel = false;
       delete this.orderBuilderStates[this.currentChat.id];
+    },
+    // V2 POS iframe methods
+    togglePosOrderIframe() {
+      this.showPosOrderIframe = !this.showPosOrderIframe;
+    },
+    closePosOrder() {
+      this.showPosOrderIframe = false;
+    },
+    handlePosMessage(data) {
+      if (data.type === 'pos:order-shared' && data.payload) {
+        this.handlePosOrderShared(data.payload);
+      } else if (data.type === 'pos:close') {
+        this.closePosOrder();
+      }
+    },
+    async handlePosOrderShared(payload) {
+      // Map POS payload to sendOrderCheckoutLink format
+      const mapped = {
+        checkout_url: payload.share_url,
+        grand_total: payload.grand_total,
+        subtotal: payload.grand_total,
+        shipping: 0,
+        message: `Your order is ready — ${payload.currency || 'THB'} ${payload.grand_total}`,
+        products: (payload.items_preview || []).map(item => ({
+          item_name: item.title,
+          image_url: item.image,
+          qty: item.qty,
+          price: item.price,
+          currency: payload.currency || 'THB',
+        })),
+        customer: {
+          name: this.currentContactName,
+        },
+      };
+      await this.sendOrderCheckoutLink(mapped);
+      this.closePosOrder();
     },
     async sendProductCard(payload) {
       this.productSendPending = true;
@@ -1525,6 +1576,32 @@ export default {
       @discard="discardOrderBuilder"
       @send="sendOrderCheckoutLink"
     />
+    <div
+      v-if="showPosOrderIframe && posIframeUrl"
+      class="fixed inset-0 z-[100] flex items-stretch bg-black/40"
+    >
+      <div
+        class="relative mx-auto my-4 flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
+        <div class="flex items-center justify-between border-b px-4 py-2">
+          <span class="text-sm font-medium text-slate-700">{{
+            $t('CONVERSATION.REPLYBOX.POS_ORDER_V2')
+          }}</span>
+          <button
+            class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            @click="closePosOrder"
+          >
+            <fluent-icon icon="dismiss" size="20" />
+          </button>
+        </div>
+        <iframe
+          :src="posIframeUrl"
+          class="flex-1 border-0"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          allow="clipboard-write"
+        />
+      </div>
+    </div>
     <ArticleSearchPopover
       v-if="showArticleSearchPopover && connectedPortalSlug"
       :selected-portal-slug="connectedPortalSlug"
@@ -1705,6 +1782,7 @@ export default {
         :show-order-builder-button="
           showProductsButton && !showProductPickerPanel && !showCardPickerPanel
         "
+        :show-pos-order-button="showProductsButton && !showPosOrderIframe"
         :saved-order-item-count="savedOrderItemCount"
         @select-whatsapp-template="openWhatsappTemplateModal"
         @select-content-template="openContentTemplateModal"
@@ -1714,6 +1792,7 @@ export default {
         @toggle-products-picker="toggleProductPickerPanel"
         @toggle-cards-picker="toggleCardPickerPanel"
         @toggle-order-builder="toggleOrderBuilderPanel"
+        @toggle-pos-order="togglePosOrderIframe"
       />
     </Transition>
 

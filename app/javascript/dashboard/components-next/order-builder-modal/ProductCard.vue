@@ -71,9 +71,9 @@ const ariaLabel = computed(() =>
       />
       <div
         v-else
-        class="flex h-full w-full items-center justify-center text-n-slate-9"
+        class="flex h-full w-full flex-col items-center justify-center gap-1 text-n-slate-9"
       >
-        <Icon icon="i-lucide-package" size="32" />
+        <Icon icon="i-lucide-package" size="48" />
       </div>
       <!-- Add-to-cart checkmark overlay -->
       <Transition
@@ -99,7 +99,10 @@ const ariaLabel = computed(() =>
         class="line-clamp-2 text-sm font-medium leading-tight text-n-slate-12"
         :title="product.item_name"
       >
-        {{ product.item_name }}
+        {{
+          product.item_name ||
+          t('CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL.UNNAMED_PRODUCT')
+        }}
       </p>
 
       <p class="text-sm font-semibold text-n-slate-12">

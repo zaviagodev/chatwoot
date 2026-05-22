@@ -27,10 +27,23 @@ const carouselCount = computed(() =>
 
 const hasImage = computed(() => !!product.value.image_url);
 
+const isCheckoutCard = computed(
+  () => isCarousel.value && contentAttributes.value?.grand_total != null
+);
+
+const displayTotal = computed(() => {
+  // For itemized checkout cards, use the server grand_total (source of truth)
+  if (isCarousel.value && contentAttributes.value?.grand_total != null) {
+    return contentAttributes.value.grand_total;
+  }
+  // Single product card — show product price
+  return product.value.price;
+});
+
 const formattedPrice = computed(() => {
-  const { price, currency } = product.value;
+  const price = displayTotal.value;
   if (!price && price !== 0) return '';
-  const curr = currency || 'THB';
+  const curr = product.value.currency || 'THB';
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -61,19 +74,38 @@ const formattedPrice = computed(() => {
         <p class="text-sm font-semibold mb-1 text-n-slate-12 leading-snug">
           {{ product.item_name }}
         </p>
-        <p v-if="formattedPrice" class="text-sm text-n-slate-11 mb-2">
-          {{ formattedPrice }}
-        </p>
-        <p class="text-xs text-n-slate-9">
-          {{ t('CONVERSATION.REPLYBOX.PRODUCT_PICKER.PRODUCT_CARD_LABEL') }}
-        </p>
-        <p
-          v-if="isCarousel && carouselCount > 1"
-          class="text-xs text-n-blue-11 mt-1"
-        >
-          {{ `+${carouselCount - 1}` }}
-          {{ t('CONVERSATION.REPLYBOX.CARD_PICKER.CAROUSEL_MORE_CARDS') }}
-        </p>
+        <!-- Checkout card: show grand total + item count -->
+        <template v-if="isCheckoutCard">
+          <p class="text-sm font-semibold text-n-slate-12 mb-2">
+            {{ t('CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL.REVIEW_TOTAL') }}:
+            {{ formattedPrice }}
+          </p>
+          <p v-if="carouselCount > 1" class="text-xs text-n-slate-9">
+            {{ carouselCount }}
+            {{
+              t(
+                'CONVERSATION.REPLYBOX.ORDER_BUILDER_MODAL.ITEMS_COUNT_SINGULAR',
+                { count: carouselCount }
+              )
+            }}
+          </p>
+        </template>
+        <!-- Single product card: show product price -->
+        <template v-else>
+          <p v-if="formattedPrice" class="text-sm text-n-slate-11 mb-2">
+            {{ formattedPrice }}
+          </p>
+          <p class="text-xs text-n-slate-9">
+            {{ t('CONVERSATION.REPLYBOX.PRODUCT_PICKER.PRODUCT_CARD_LABEL') }}
+          </p>
+          <p
+            v-if="isCarousel && carouselCount > 1"
+            class="text-xs text-n-blue-11 mt-1"
+          >
+            {{ `+${carouselCount - 1}` }}
+            {{ t('CONVERSATION.REPLYBOX.CARD_PICKER.CAROUSEL_MORE_CARDS') }}
+          </p>
+        </template>
       </div>
     </div>
   </BaseBubble>

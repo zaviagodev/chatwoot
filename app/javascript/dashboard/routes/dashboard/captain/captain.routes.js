@@ -17,6 +17,7 @@ import ProductsIndex from './products/Index.vue';
 import ProductDetailShow from './products/Show.vue';
 import VariantDetailPage from './products/VariantDetail.vue';
 import ReviewsIndex from './reviews/Index.vue';
+import HistoryIndex from './history/Index.vue';
 import ResponsesIndex from './responses/Index.vue';
 import ResponsesPendingIndex from './responses/Pending.vue';
 import CustomToolsIndex from './tools/Index.vue';
@@ -78,6 +79,12 @@ const assistantRoutes = [
     path: frontendURL('accounts/:accountId/captain/:assistantId/reviews'),
     component: ReviewsIndex,
     name: 'captain_assistants_reviews_index',
+    meta,
+  },
+  {
+    path: frontendURL('accounts/:accountId/captain/:assistantId/history'),
+    component: HistoryIndex,
+    name: 'captain_assistants_history_index',
     meta,
   },
   {

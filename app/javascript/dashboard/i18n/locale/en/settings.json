@@ -315,6 +315,7 @@
     "CAPTAIN_DOCUMENTS": "Documents",
     "CAPTAIN_PRODUCTS": "Products",
     "CAPTAIN_REVIEWS": "Reviews",
+    "CAPTAIN_HISTORY": "Response History",
     "CAPTAIN_RESPONSES": "FAQs",
     "CAPTAIN_TOOLS": "Tools",
     "CAPTAIN_SCENARIOS": "Scenarios",
@@ -1282,6 +1283,28 @@
       "DISCARD_CONFIRM": "Discard",
       "PRODUCT_LINK_NO_PRODUCTS": "No products synced yet",
       "CHAR_COUNT": "{current}/{max}"
+    }
+  },
+  "CAPTAIN_HISTORY": {
+    "HEADER": "Response History",
+    "SEARCH": {
+      "PLACEHOLDER": "Search responses...",
+      "NO_RESULTS_TITLE": "No responses found",
+      "NO_RESULTS_SUBTITLE": "Try a different search term",
+      "CLEAR_SEARCH": "Clear search",
+      "ERROR_TITLE": "Could not load responses",
+      "ERROR_SUBTITLE": "Something went wrong. Please try again.",
+      "RETRY": "Retry"
+    },
+    "EMPTY": {
+      "TITLE": "No approved responses yet",
+      "SUBTITLE": "When agents approve Captain's draft responses, they will appear here"
+    },
+    "CARD": {
+      "CONVERSATION": "Conversation #{id}",
+      "APPROVED_BY": "Approved by {name}",
+      "EDITED": "Edited",
+      "TOKENS": "{input} in / {output} out"
     }
   }
 }

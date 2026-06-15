@@ -344,6 +344,14 @@ const menuItems = computed(() => {
           }),
         },
         {
+          name: 'History',
+          label: t('SIDEBAR.CAPTAIN_HISTORY'),
+          activeOn: ['captain_assistants_history_index'],
+          to: accountScopedRoute('captain_assistants_index', {
+            navigationPath: 'captain_assistants_history_index',
+          }),
+        },
+        {
           name: 'Scenarios',
           label: t('SIDEBAR.CAPTAIN_SCENARIOS'),
           activeOn: ['captain_assistants_scenarios_index'],

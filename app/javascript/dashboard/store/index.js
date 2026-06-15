@@ -62,6 +62,7 @@ import captainTools from './captain/tools';
 import captainCustomTools from './captain/customTools';
 import captainProducts from './captain/products';
 import captainReviews from './captain/reviews';
+import captainResponseHistory from './captain/responseHistory';
 
 const plugins = [];
 
@@ -129,6 +130,7 @@ export default createStore({
     captainCustomTools,
     captainProducts,
     captainReviews,
+    captainResponseHistory,
   },
   plugins,
 });

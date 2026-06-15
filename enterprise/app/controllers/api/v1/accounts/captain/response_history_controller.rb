@@ -11,7 +11,7 @@ class Api::V1::Accounts::Captain::ResponseHistoryController < Api::V1::Accounts:
                         .where("content_attributes::text LIKE ?", '%generated_by%captain%')
                         .order(created_at: :desc)
 
-    base_scope = base_scope.search(params[:search]) if params[:search].present?
+    base_scope = base_scope.where('content ILIKE ?', "%#{params[:search]}%") if params[:search].present?
 
     @responses_count = base_scope.count
     @responses = base_scope.includes(:conversation).page(@current_page).per(RESULTS_PER_PAGE)

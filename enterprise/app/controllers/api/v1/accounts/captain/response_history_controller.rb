@@ -8,7 +8,7 @@ class Api::V1::Accounts::Captain::ResponseHistoryController < Api::V1::Accounts:
   def index
     base_scope = Current.account
                         .messages
-                        .where("content_attributes::text LIKE ?", '%"generated_by":"captain"%')
+                        .where("content_attributes::text LIKE ?", '%generated_by%captain%')
                         .order(created_at: :desc)
 
     base_scope = base_scope.search(params[:search]) if params[:search].present?

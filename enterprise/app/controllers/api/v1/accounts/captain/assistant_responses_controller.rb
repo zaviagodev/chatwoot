@@ -35,6 +35,9 @@ class Api::V1::Accounts::Captain::AssistantResponsesController < Api::V1::Accoun
 
   private
 
+  MANUAL_SOURCES = ['Captain::Document', 'User', nil].freeze
+  AUTO_SOURCES = ['Conversation', 'Captain::Product'].freeze
+
   def apply_filters(base_query)
     base_query = base_query.where(assistant_id: permitted_params[:assistant_id]) if permitted_params[:assistant_id].present?
 
@@ -45,6 +48,7 @@ class Api::V1::Accounts::Captain::AssistantResponsesController < Api::V1::Accoun
       )
     end
 
+    base_query = apply_source_filter(base_query)
     base_query = base_query.where(status: permitted_params[:status]) if permitted_params[:status].present?
 
     if permitted_params[:search].present?
@@ -62,9 +66,19 @@ class Api::V1::Accounts::Captain::AssistantResponsesController < Api::V1::Accoun
     @assistant = Current.account.captain_assistants.find_by(id: params[:assistant_id])
   end
 
+  def apply_source_filter(base_query)
+    case permitted_params[:source]
+    when 'manual'
+      base_query.where(documentable_type: MANUAL_SOURCES)
+    when 'auto'
+      base_query.where(documentable_type: AUTO_SOURCES)
+    else
+      base_query
+    end
+  end
+
   def set_responses
     @responses = Current.account.captain_assistant_responses
-                                     .where(documentable_type: ['Captain::Document', 'User', nil])
                                      .includes(:assistant, :documentable).ordered
   end
 
@@ -77,7 +91,7 @@ class Api::V1::Accounts::Captain::AssistantResponsesController < Api::V1::Accoun
   end
 
   def permitted_params
-    params.permit(:id, :assistant_id, :page, :document_id, :account_id, :status, :search)
+    params.permit(:id, :assistant_id, :page, :document_id, :account_id, :status, :search, :source)
   end
 
   def response_params

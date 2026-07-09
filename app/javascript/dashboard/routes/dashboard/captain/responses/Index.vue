@@ -9,6 +9,7 @@ import { useAccount } from 'dashboard/composables/useAccount';
 
 import Banner from 'dashboard/components-next/banner/Banner.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
+import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import BulkSelectBar from 'dashboard/components-next/captain/assistant/BulkSelectBar.vue';
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import BulkDeleteDialog from 'dashboard/components-next/captain/pageComponents/BulkDeleteDialog.vue';
@@ -35,11 +36,23 @@ const bulkDeleteDialog = ref(null);
 
 const dialogType = ref('');
 const searchQuery = ref('');
+const sourceFilter = ref('');
 const { t } = useI18n();
 
 const createDialog = ref(null);
 
 const selectedAssistantId = computed(() => Number(route.params.assistantId));
+
+const SOURCE_TABS = [
+  { label: 'All', key: '' },
+  { label: 'Manual', key: 'manual' },
+  { label: 'Auto-generated', key: 'auto' },
+];
+
+const activeTabIndex = computed(() => {
+  const idx = SOURCE_TABS.findIndex(tab => tab.key === sourceFilter.value);
+  return idx >= 0 ? idx : 0;
+});
 
 const pendingCount = useMapGetter('captainResponses/getPendingCount');
 
@@ -104,11 +117,19 @@ const fetchResponses = (page = 1) => {
   if (searchQuery.value) {
     filterParams.search = searchQuery.value;
   }
+  if (sourceFilter.value) {
+    filterParams.source = sourceFilter.value;
+  }
 
   // Update URL with current filters
   updateURLWithFilters(page, searchQuery.value);
 
   store.dispatch('captainResponses/get', filterParams);
+};
+
+const handleSourceTabChange = tab => {
+  sourceFilter.value = tab.key;
+  fetchResponses(1);
 };
 
 // Bulk action
@@ -233,15 +254,22 @@ onMounted(() => {
         v-if="bulkSelectedIds.size === 0"
         class="flex gap-3 justify-between w-full items-center"
       >
-        <Input
-          v-model="searchQuery"
-          :placeholder="$t('CAPTAIN.RESPONSES.SEARCH_PLACEHOLDER')"
-          class="w-64"
-          size="sm"
-          type="search"
-          autofocus
-          @input="debouncedSearch"
-        />
+        <div class="flex items-center gap-3">
+          <TabBar
+            :tabs="SOURCE_TABS"
+            :initial-active-tab="activeTabIndex"
+            @tab-changed="handleSourceTabChange"
+          />
+          <Input
+            v-model="searchQuery"
+            :placeholder="$t('CAPTAIN.RESPONSES.SEARCH_PLACEHOLDER')"
+            class="w-64"
+            size="sm"
+            type="search"
+            autofocus
+            @input="debouncedSearch"
+          />
+        </div>
       </div>
     </template>
 

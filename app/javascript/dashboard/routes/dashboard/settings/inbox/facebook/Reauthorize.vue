@@ -79,7 +79,15 @@ export default {
         {
           scope:
             'pages_manage_metadata,business_management,pages_messaging,instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_messages',
-          auth_type: 'reauthorize',
+          // auth_type 'reauthorize' re-authenticates but SILENTLY REUSES the
+          // previously-granted set of Pages — it never re-shows the "which Pages
+          // to share" picker. So a Page that dropped out of the app's asset grant
+          // (e.g. Sub.scrub, inbox 33) can never be re-added on reconnect, and
+          // /me/accounts keeps returning only the still-granted pages → the
+          // backend reports "you don't manage this Page" even for a real admin.
+          // 'rerequest' re-opens the consent/asset dialog so the admin can
+          // (re)grant the missing Page. See TKT: subscrub FB reconnect.
+          auth_type: 'rerequest',
         }
       );
     },
